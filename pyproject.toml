@@ -1,0 +1,10 @@
+[project]
+name = "marketinsights"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2",
+    "pydantic-settings[dotenv]>=2.13.1",
+]
