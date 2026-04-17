@@ -1,0 +1,1 @@
+### To view md files in HTML, click within the file and hit Ctrl + Shift + V
