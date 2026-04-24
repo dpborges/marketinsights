@@ -13,6 +13,8 @@
 - Keep core SDK domain logic decoupled from FastAPI
 
 ## Configuration management
+- use pydantic-settings for configuration management
+  
 - use dotenv to manage enviroment variables 
   - Example
     - MARKET_PROVIDER=fmp
@@ -20,7 +22,6 @@
     - ALPHAVANTAGE_API_KEY=your_key_here
     - REQUEST_TIMEOUT=30
 
-- use pydantic-settings for configuration management
 
 ## Error handling
 - Use SDK exception hierarchy rather than ad hoc ValueError/RuntimeError, for example
@@ -40,17 +41,21 @@
 - Mock provider adapters in API tests
 
 
-## SDK Project Hierarchy
-- src
-  - mi_sdk
-    - config (settigns.py)
-    - domain ( contains domain models)
-    - interfaces (pricing_service.py)
-    - mappers (provider payload mapping to canonical domain model)
-    - provider (provider specific code for  FMP, yahoo finance, or alphavantage)
-    - services 
-    - streaming (optional RxPy adapters later)
-    - transport (http client wrappers)
+## SDK Project file Hierarchy
+src/mi_sdk/
+├── interfaces/
+│   ├── adapters.py              # SectorPerformanceAdapter (Protocol)
+│   └── sector_performance_service.py  # SectorPerformanceService (Protocol)
+├── services/
+│   └── sector_performance_service.py  # SectorPerformanceServiceImpl (concrete)
+├── providers/fmp/
+│   └── fmp_adapter.py           # FMPAdapter (concrete)
+├── factory.py                    # ServiceFactory (DI container)
+└── domain/
+    ├── models/
+    │   └── sector_performance.py # Pydantic request/response models
+    └── exceptions.py             # SDK exception hierarchy
+
 
 ## Public API design
 Keep the SDK public surface generic and provider-neutral.
@@ -63,3 +68,21 @@ That allows for switching providers without changing the application-facing API.
 ###  Example provider-specific classes should stay internal:
 - FmpPricingProvider
 - AlphaVantageEarningsProvider
+
+### SDK Architecture with Protocols
+SDK uses Protocols instead of ABCs for flexible, composition-based architecture
+
+![SDK Architecture](./images/sdk-architecture.png)
+
+## Key Principles
+
+Composition over Inheritance: Services and adapters no longer inherit from protocols. Instead, they simply implement the required methods and are recognized as compatible through structural subtyping (duck typing).
+
+Protocols for Type Hints: Protocols define the contract without enforcing inheritance. This enables:
+
+Cleaner code with no boilerplate base class requirements
+Natural duck typing that's still type-safe
+Easier mocking in tests (no spec= needed for basic protocol compliance)
+Dependency Injection: The factory constructs the object graph. Services receive adapters as constructor arguments, keeping concerns decoupled.
+
+Error Handling: Provider-specific exceptions are caught and converted to SDK domain exceptions (ProviderUnavailableError, SymbolNotFoundError) at the adapter boundary.

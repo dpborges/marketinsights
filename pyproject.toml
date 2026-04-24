@@ -7,4 +7,11 @@ requires-python = ">=3.10"
 dependencies = [
     "pydantic>=2",
     "pydantic-settings[dotenv]>=2.13.1",
+    "httpx>=0.25.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
 ]
