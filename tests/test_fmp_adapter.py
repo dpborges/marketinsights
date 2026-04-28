@@ -1,7 +1,9 @@
 """Tests for FMP adapter"""
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
+
+import httpx
 
 from mi_sdk.domain.exceptions import ProviderUnavailableError, SymbolNotFoundError
 from mi_sdk.providers.fmp.fmp_adapter import FMPAdapter
@@ -69,13 +71,17 @@ class TestFMPAdapter:
         self, adapter: FMPAdapter, valid_request, fmp_quote_response
     ) -> None:
         """Test successful data fetching"""
-        with patch("httpx.AsyncClient") as mock_client:
-            # Setup mock response
-            mock_response = AsyncMock()
+        with patch("mi_sdk.providers.fmp.fmp_adapter.httpx.AsyncClient") as mock_client_class:
+            # Setup mock response - use Mock for synchronous json() method
+            mock_response = Mock()
             mock_response.json.return_value = fmp_quote_response
-            mock_response.raise_for_status.return_value = None
+            mock_response.raise_for_status = Mock()
 
-            mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.__aexit__.return_value = None
+            mock_client_class.return_value = mock_client
 
             # Act
             result = await adapter.fetch_sector_performance(valid_request)
@@ -93,8 +99,10 @@ class TestFMPAdapter:
         self, adapter: FMPAdapter, valid_request
     ) -> None:
         """Test handling of HTTP errors"""
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.get.side_effect = Exception("HTTP Error")
+        with patch("mi_sdk.providers.fmp.fmp_adapter.httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = httpx.HTTPError("HTTP Error")
+            mock_client_class.return_value.__aenter__.return_value = mock_client
 
             with pytest.raises(ProviderUnavailableError, match="Failed to fetch data from FMP"):
                 await adapter.fetch_sector_performance(valid_request)
@@ -104,12 +112,16 @@ class TestFMPAdapter:
         self, adapter: FMPAdapter, valid_request
     ) -> None:
         """Test handling of invalid response format"""
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_response = AsyncMock()
+        with patch("mi_sdk.providers.fmp.fmp_adapter.httpx.AsyncClient") as mock_client_class:
+            mock_response = Mock()
             mock_response.json.return_value = {"error": "Invalid format"}  # Not a list
-            mock_response.raise_for_status.return_value = None
+            mock_response.raise_for_status = Mock()
 
-            mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.__aexit__.return_value = None
+            mock_client_class.return_value = mock_client
 
             with pytest.raises(ProviderUnavailableError, match="Unexpected response format"):
                 await adapter.fetch_sector_performance(valid_request)

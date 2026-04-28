@@ -42,19 +42,10 @@
 
 
 ## SDK Project file Hierarchy
-src/mi_sdk/
-├── interfaces/
-│   ├── adapters.py              # SectorPerformanceAdapter (Protocol)
-│   └── sector_performance_service.py  # SectorPerformanceService (Protocol)
-├── services/
-│   └── sector_performance_service.py  # SectorPerformanceServiceImpl (concrete)
-├── providers/fmp/
-│   └── fmp_adapter.py           # FMPAdapter (concrete)
-├── factory.py                    # ServiceFactory (DI container)
-└── domain/
-    ├── models/
-    │   └── sector_performance.py # Pydantic request/response models
-    └── exceptions.py             # SDK exception hierarchy
+
+![SDK Architecture](./images/SDK-file-hierarchy.png)
+
+..also available at src/mi_sdk folder in project
 
 
 ## Public API design
