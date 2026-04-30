@@ -1,11 +1,14 @@
 """Tests for FMP adapter"""
 
+import os
+
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 
 from mi_sdk.domain.exceptions import ProviderUnavailableError, SymbolNotFoundError
+from mi_sdk.domain.models.sector_performance import SectorPerformanceRequest
 from mi_sdk.providers.fmp.fmp_adapter import FMPAdapter
 
 
@@ -125,3 +128,24 @@ class TestFMPAdapter:
 
             with pytest.raises(ProviderUnavailableError, match="Unexpected response format"):
                 await adapter.fetch_sector_performance(valid_request)
+
+    @pytest.mark.asyncio
+    async def test_fetch_sector_performance_live(self) -> None:
+        """Live FMP API test for sector performance."""
+        api_key = os.getenv("MARKET_FMP_API_KEY")
+        if not api_key:
+            pytest.skip("MARKET_FMP_API_KEY not set for live FMP test")
+
+        adapter = FMPAdapter(api_key=api_key, timeout=30)
+        request = SectorPerformanceRequest(symbols=["XLK", "XLF"])
+
+        try:
+            result = await adapter.fetch_sector_performance(request)
+        except ProviderUnavailableError as exc:
+            pytest.skip(f"Live FMP API test skipped: {exc}")
+
+        assert {p.symbol for p in result.performances} == {"XLK", "XLF"}
+        assert {p.sector for p in result.performances} == {"Technology", "Financial"}
+        assert all(isinstance(p.price, (int, float)) for p in result.performances)
+        assert all(isinstance(p.change, (int, float)) for p in result.performances)
+        assert all(isinstance(p.change_percent, (int, float)) for p in result.performances)
