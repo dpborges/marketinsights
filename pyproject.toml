@@ -6,12 +6,20 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "pydantic>=2",
-    "pydantic-settings[dotenv]>=2.13.1",
+    "pydantic-settings>=2.13.1",
+    "python-dotenv>=1.0.0",
     "httpx>=0.25.0",
+    "alembic>=1.18.4",
+    "psycopg[binary]>=3.3.4",
 ]
 
 [project.optional-dependencies]
 test = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+]
+
+[dependency-groups]
+dev = [
+    "isort>=8.0.1",
 ]
