@@ -11,3 +11,16 @@ pytest tests/test_sector_performance_service.py
 python -m pytest tests/test_sector_performance_service.py
 #### How to run test for fmp_adapter
 pytest tests/test_fmp_adapter.py -q
+
+#### How to run test for sector performance CLI
+- From repo root run the pytest for the CLI test:
+
+```bash
+pytest tests/test_cli_sector_service.py -q
+```
+
+Or run the specific test module with Python:
+
+```bash
+python -m pytest tests/test_cli_sector_service.py
+```
