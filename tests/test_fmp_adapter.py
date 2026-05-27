@@ -7,7 +7,13 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 
-from mi_sdk.domain.exceptions import ProviderUnavailableError, SymbolNotFoundError
+from mi_sdk.domain.exceptions import (
+    AuthorizationError,
+    AuthenticationError,
+    ProviderUnavailableError,
+    RateLimitError,
+    SymbolNotFoundError,
+)
 from mi_sdk.domain.models.sector_performance import SectorPerformanceRequest
 from mi_sdk.providers.fmp.fmp_adapter import FMPAdapter
 
@@ -98,6 +104,32 @@ class TestFMPAdapter:
             assert result.performances[1].sector == "Financial"
 
     @pytest.mark.asyncio
+    async def test_fetch_sector_performance_with_trailing_slash_base_url(
+        self, adapter: FMPAdapter, valid_request, fmp_quote_response
+    ) -> None:
+        """Test that a trailing slash in base_url is normalized."""
+        adapter.base_url = "https://financialmodelingprep.com/stable/"
+
+        with patch("mi_sdk.providers.fmp.fmp_adapter.httpx.AsyncClient") as mock_client_class:
+            mock_response = Mock()
+            mock_response.json.return_value = fmp_quote_response
+            mock_response.raise_for_status = Mock()
+
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.__aexit__.return_value = None
+            mock_client_class.return_value = mock_client
+
+            result = await adapter.fetch_sector_performance(valid_request)
+
+            mock_client.get.assert_called_once_with(
+                "https://financialmodelingprep.com/stable/batch-quote",
+                params={"symbols": "XLK,XLF", "apikey": "test_key"},
+            )
+            assert len(result.performances) == 2
+
+    @pytest.mark.asyncio
     async def test_fetch_sector_performance_http_error(
         self, adapter: FMPAdapter, valid_request
     ) -> None:
@@ -109,6 +141,54 @@ class TestFMPAdapter:
 
             with pytest.raises(ProviderUnavailableError, match="Failed to fetch data from FMP"):
                 await adapter.fetch_sector_performance(valid_request)
+
+    @pytest.mark.asyncio
+    async def test_fetch_sector_performance_authorization_error(
+        self, adapter: FMPAdapter, valid_request
+    ) -> None:
+        """Test handling of authorization failures from FMP"""
+        with patch("mi_sdk.providers.fmp.fmp_adapter.httpx.AsyncClient") as mock_client_class:
+            request = httpx.Request("GET", "https://financialmodelingprep.com/stable/batch-quote")
+            response = httpx.Response(
+                401,
+                request=request,
+                text='{"Error Message":"Invalid API key"}',
+            )
+            exc = httpx.HTTPStatusError("401 Unauthorized", request=request, response=response)
+
+            mock_client = AsyncMock()
+            mock_client.get.side_effect = exc
+            mock_client_class.return_value.__aenter__.return_value = mock_client
+
+            with pytest.raises(AuthenticationError, match="FMP authentication failed"):
+                await adapter.fetch_sector_performance(valid_request)
+
+    @pytest.mark.asyncio
+    async def test_fetch_sector_performance_batch_quote_restricted_falls_back(
+        self, adapter: FMPAdapter, valid_request, fmp_quote_response
+    ) -> None:
+        """Test fallback from batch-quote to single quote calls."""
+        with patch("mi_sdk.providers.fmp.fmp_adapter.httpx.AsyncClient") as mock_client_class:
+            request = httpx.Request("GET", "https://financialmodelingprep.com/stable/batch-quote")
+            response = httpx.Response(
+                402,
+                request=request,
+                text='{"Error Message":"Restricted Endpoint"}',
+            )
+            exc = httpx.HTTPStatusError("402 Payment Required", request=request, response=response)
+
+            mock_client = AsyncMock()
+            # First batch request fails, then individual quote requests succeed
+            mock_client.get = AsyncMock(side_effect=[exc, Mock(json=Mock(return_value=[fmp_quote_response[0]]), raise_for_status=Mock()), Mock(json=Mock(return_value=[fmp_quote_response[1]]), raise_for_status=Mock())])
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.__aexit__.return_value = None
+            mock_client_class.return_value = mock_client
+
+            result = await adapter.fetch_sector_performance(valid_request)
+
+            assert len(result.performances) == 2
+            assert result.performances[0].symbol == "XLK"
+            assert result.performances[1].symbol == "XLF"
 
     @pytest.mark.asyncio
     async def test_fetch_sector_performance_invalid_response(
@@ -141,7 +221,7 @@ class TestFMPAdapter:
 
         try:
             result = await adapter.fetch_sector_performance(request)
-        except ProviderUnavailableError as exc:
+        except (ProviderUnavailableError, AuthorizationError, AuthenticationError, RateLimitError) as exc:
             pytest.skip(f"Live FMP API test skipped: {exc}")
 
         assert {p.symbol for p in result.performances} == {"XLK", "XLF"}
