@@ -37,15 +37,19 @@
 - Do not leak provider-specific exceptions past the adapter layer
 
 ## Testing
-- Generate pytest tests for services, adapters, and API routes
+- Generate pytest tests for SDK services, and API routes
 - Mock provider adapters in API tests
+
+## Manual FMPAdapter testing
+- For manual testing for newly created adapter service, look for a directive in the prompt for the build of the specific FMP Adapter service itself. The fmp_adapter_run.py should be updated to able to test the service manually.
+
 
 
 ## SDK Project file Hierarchy
 
 ![SDK Architecture](./images/SDK-file-hierarchy.png)
 
-..also available at src/mi_sdk folder in project
+..also available at src/mi_sdk folder in the project
 
 
 ## Public API design
@@ -53,9 +57,12 @@ Keep the SDK public surface generic and provider-neutral.
 That allows for switching providers without changing the application-facing API.
 
 ### Example public services:
-- PricingService
-- EarningsService
-- AnalystService
+- sectors
+- analyst
+- pricing 
+- earnings
+- ratings
+- 
 ###  Example provider-specific classes should stay internal:
 - FmpPricingProvider
 - AlphaVantageEarningsProvider

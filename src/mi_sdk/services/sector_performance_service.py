@@ -3,7 +3,6 @@
 from ..domain.models.sector_performance import SectorPerformanceRequest, SectorPerformanceResponse
 from ..interfaces.adapters import SectorPerformanceAdapter
 
-
 class SectorPerformanceServiceImpl:
     """Implementation of sector performance service"""
 
