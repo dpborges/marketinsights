@@ -92,3 +92,17 @@ def test_build_summary_supports_multiple_periods() -> None:
     assert result["benchmark"]["periods"][1]["periodCode"] == "1M"
     assert result["sectors"][0]["symbol"] == "XLK"
     assert len(result["sectors"][0]["periods"]) == 2
+
+
+def test_build_summary_normalizes_alias_period_codes() -> None:
+    adapter = StubAdapter(
+        {
+            "SPY": {"current": 100.0, "lookback": 97.0},
+            "XLK": {"current": 95.0, "lookback": 90.0},
+        }
+    )
+    service = SectorSummaryService(adapter=adapter)
+
+    result = service.build_sector_summary(symbols=["XLK"], period_codes=["6m", "year to date", "1 year"])
+
+    assert [period["periodCode"] for period in result["benchmark"]["periods"]] == ["6M", "YTD", "1Y"]

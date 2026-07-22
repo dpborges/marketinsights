@@ -13,6 +13,10 @@ File structure will look as follows:
           ratings_commands.py
 </pre>
 
+### Tool chain for building CLI
+
+- CLI tools of choice:    Typer and Rich
+
 ### The three layers of the architecture will align by domain
 
 | CLI                    | API            | SDK                          |
@@ -42,5 +46,5 @@ User ─────────┤                      ▼
 ### Below is example CLI command for the sector_summary_service.py
 
 ```bash
-market-data sector summary --period 1M
+mi sector summary --period 1M
 ```

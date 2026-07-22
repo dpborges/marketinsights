@@ -15,6 +15,7 @@ the 2-week period.
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from typing import Any, Sequence
 
@@ -58,6 +59,42 @@ SUPPORTED_PERIODS = {
     "1Y": {"tradingDays": 252, "label": "1Y"},
     "3Y": {"tradingDays": 756, "label": "3Y"},
     "5Y": {"tradingDays": 1260, "label": "5Y"},
+}
+
+PERIOD_ALIASES = {
+    "1D": "1D",
+    "1DAY": "1D",
+    "TODAY": "1D",
+    "2W": "2W",
+    "2WK": "2W",
+    "2WEEK": "2W",
+    "2WEEKS": "2W",
+    "1M": "1M",
+    "1MO": "1M",
+    "1MONTH": "1M",
+    "1MONTHS": "1M",
+    "3M": "3M",
+    "3MO": "3M",
+    "3MONTH": "3M",
+    "3MONTHS": "3M",
+    "6M": "6M",
+    "6MO": "6M",
+    "6MONTH": "6M",
+    "6MONTHS": "6M",
+    "YTD": "YTD",
+    "YEARTODATE": "YTD",
+    "1Y": "1Y",
+    "1YR": "1Y",
+    "1YEAR": "1Y",
+    "1YEARS": "1Y",
+    "3Y": "3Y",
+    "3YR": "3Y",
+    "3YEAR": "3Y",
+    "3YEARS": "3Y",
+    "5Y": "5Y",
+    "5YR": "5Y",
+    "5YEAR": "5Y",
+    "5YEARS": "5Y",
 }
 
 
@@ -305,10 +342,16 @@ class SectorSummaryService:
         if not period_codes:
             return ["2W"]
 
-        normalized = [period_code.upper() for period_code in period_codes]
-        invalid_periods = [
-            period_code for period_code in normalized if period_code not in SUPPORTED_PERIODS
-        ]
+        normalized: list[str] = []
+        invalid_periods: list[str] = []
+        for period_code in period_codes:
+            key = re.sub(r"[\s_-]+", "", period_code.strip()).upper()
+            candidate = PERIOD_ALIASES.get(key)
+            if candidate is None:
+                invalid_periods.append(period_code)
+                continue
+            normalized.append(candidate)
+
         if invalid_periods:
             raise DataValidationError(
                 f"Unsupported period codes: {', '.join(invalid_periods)}"
