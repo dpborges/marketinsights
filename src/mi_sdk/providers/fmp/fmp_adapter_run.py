@@ -34,7 +34,7 @@ def _prompt_for_historical_prices() -> dict[str, Any]:
     print("Enter as_of_date in YYYY-MM-DD format, e.g. 2026-07-16")
     raw_date = _prompt("As of date: ")
     print("Enter lookback_periods as a whole number, e.g. 1")
-    raw_lookback = _prompt("Lookback periods: ")
+    raw_lookback = _prompt("Lookback periods (in days): ")
 
     symbols = [s.strip().upper() for s in raw_symbols.split(",") if s.strip()]
     try:

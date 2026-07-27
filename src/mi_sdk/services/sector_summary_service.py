@@ -36,7 +36,7 @@ DEFAULT_SECTOR_SYMBOLS = [
 ]
 
 SECTOR_METADATA = {
-    "XLB": {"sectorCode": "ENERGY", "sectorName": "Energy"},
+    "XLB": {"sectorCode": "MATERIALS", "sectorName": "Materials"},
     "XLC": {"sectorCode": "COMMUNICATION_SERVICES", "sectorName": "Communication Services"},
     "XLE": {"sectorCode": "ENERGY", "sectorName": "Energy"},
     "XLF": {"sectorCode": "FINANCIALS", "sectorName": "Financials"},

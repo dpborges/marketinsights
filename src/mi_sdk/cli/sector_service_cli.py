@@ -138,29 +138,80 @@ def sector_summary(
         )
 
         benchmark = response.get("benchmark", {})
-        benchmark_return = benchmark.get("returnPct", 0.0)
-        console.print(
-            f"[bold]Benchmark[/bold]: {benchmark.get('symbol', 'SPY')} -> {benchmark_return:.2f}%"
-        )
+        benchmark_periods = benchmark.get("periods")
+        if benchmark_periods:
+            benchmark_returns = " | ".join(
+                f"{period.get('periodCode', '-')} -> "
+                f"{period.get('performance', {}).get('returnPct', 0.0):.2f}%"
+                for period in benchmark_periods
+            )
+            console.print(
+                f"[bold]Benchmark[/bold]: {benchmark.get('symbol', 'SPY')} | "
+                f"{benchmark_returns}"
+            )
+        else:
+            benchmark_return = benchmark.get("returnPct", 0.0)
+            console.print(
+                f"[bold]Benchmark[/bold]: {benchmark.get('symbol', 'SPY')} -> "
+                f"{benchmark_return:.2f}%"
+            )
 
         table = Table(title="Sector Summary")
         table.add_column("Symbol")
         table.add_column("Sector")
+        if benchmark_periods:
+            table.add_column("Period")
         table.add_column("Return %")
         table.add_column("Excess Return %")
         table.add_column("Rank")
 
-        for sector in response.get("sectors", []):
-            performance = sector.get("performance", {})
-            relative_strength = sector.get("relativeStrength", {})
-            ranking = sector.get("ranking", {})
-            table.add_row(
-                sector.get("symbol", "-"),
-                sector.get("sectorName", "-"),
-                f"{performance.get('returnPct', 0.0):.2f}",
-                f"{relative_strength.get('excessReturnPct', 0.0):.2f}",
-                str(ranking.get("relativeStrengthRank", "-")),
-            )
+        sectors = response.get("sectors", [])
+        if benchmark_periods:
+            for benchmark_period in benchmark_periods:
+                period_code = benchmark_period.get("periodCode")
+                period_rows = []
+                for sector in sectors:
+                    period = next(
+                        (
+                            item
+                            for item in sector.get("periods", [])
+                            if item.get("periodCode") == period_code
+                        ),
+                        None,
+                    )
+                    if period is not None:
+                        period_rows.append((sector, period))
+
+                period_rows.sort(
+                    key=lambda row: row[1]
+                    .get("ranking", {})
+                    .get("relativeStrengthRank", float("inf"))
+                )
+
+                for sector, period in period_rows:
+                    performance = period.get("performance", {})
+                    relative_strength = period.get("relativeStrength", {})
+                    ranking = period.get("ranking", {})
+                    table.add_row(
+                        sector.get("symbol", "-"),
+                        sector.get("sectorName", "-"),
+                        period.get("periodCode", "-"),
+                        f"{performance.get('returnPct', 0.0):.2f}",
+                        f"{relative_strength.get('excessReturnPct', 0.0):.2f}",
+                        str(ranking.get("relativeStrengthRank", "-")),
+                    )
+        else:
+            for sector in sectors:
+                performance = sector.get("performance", {})
+                relative_strength = sector.get("relativeStrength", {})
+                ranking = sector.get("ranking", {})
+                table.add_row(
+                    sector.get("symbol", "-"),
+                    sector.get("sectorName", "-"),
+                    f"{performance.get('returnPct', 0.0):.2f}",
+                    f"{relative_strength.get('excessReturnPct', 0.0):.2f}",
+                    str(ranking.get("relativeStrengthRank", "-")),
+                )
 
         console.print(table)
 

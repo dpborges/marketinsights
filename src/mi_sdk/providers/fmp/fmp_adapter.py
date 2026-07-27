@@ -70,8 +70,11 @@ class FMPAdapter:
     ) -> Dict[str, Any]:
         """Get historical pricing for sector ETFs, SPY, and any public stocks.
 
-        Description: Returns historical pricing for all SPDR Sector ETFS, including the SPY, and public stocks.
+        Description: Returns historical pricing for all SPDR Sector ETFS, the SPY, and public stocks.
         The SPY will be used by the SDK layer (that calls this) to calculate relative strength for each of the sectors.
+        The as_of_date is the date for which the current price is requested, and the lookback_periods is the number of trading days to look back for the historical price.
+        For example, if as_of_date is 2026-07-16 and lookback_periods is 1, the historical price will be for 2026-07-15 (the previous day).
+        For example, if as_of_date is 2026-07-16 and lookback_periods is 10, the historical price will be for 2026-07-01 (2 weeks prior).
         Inputs: list of stock symbols, as_of_date, lookback_periods.
         returns: json structure with historical pricing for SYMBOLS provided for the given date range.
         """
