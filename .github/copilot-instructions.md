@@ -19,9 +19,27 @@
 
 - FastAPI routes must stay thin
 - Business logic belongs in the SDK/service layer
-- Validate inbound/outbound API payloads with Pydantic
+- Keeps domain and business logic out of route handlers.
+- Validate inbound/outbound API payloads with Pydantic V2
+- Use typed request and response models
 - Convert SDK exceptions into consistent HTTP responses
+- Use an application factory or clearly isolated application-construction function.
 - Use dependency injection for service construction
+- Use APIRouter modules rather than placing routes in one file.
+- Use centralized configuration through pydantic-settings.
+- Should support local, test, and production environments.
+- Use structured logging.
+- Is set up to integrate with PostgreSQL.
+
+
+
+
+
+
+
+
+
+
 
 ## Error handling
 
