@@ -1,6 +1,6 @@
 """FastAPI application construction and ASGI entry point."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -19,8 +19,10 @@ from mi_api.routers import build_api_router, health_router
 
 
 def _lifespan(settings: APISettings) -> Any:
+    # Run once around the application's lifetime: create shared database and Redis
+    # resources before requests are served, then close them during shutdown.
     @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger = get_logger(__name__)
         app.state.database = (
             DatabaseManager(settings.database_url) if settings.database_url else None

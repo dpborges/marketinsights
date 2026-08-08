@@ -7,7 +7,7 @@ Context:
 - Exception Handling:     		docs/exception-handling.md
 - CLI tools of choice:    		Typer and Rich
 - Pytest test folder:		      /test/cli
-- testing documentation:  	  /docs/cli//testing-documentation.md
+- testing documentation:  	  /docs/cli/testing-documentation.md
 - usage  documentation:  	    /docs/cli/usage-documentation.md
 
 You are a python CLI developer with knowledge using Typer and Rich.  Import the sector summary SDK and create a sector summary CLI that allows executing the  following sample command variations:

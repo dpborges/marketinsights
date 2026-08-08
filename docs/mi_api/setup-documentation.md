@@ -66,5 +66,4 @@ uv run mypy .
 uv run pytest
 ```
 
-To apply Ruff's safe formatting changes locally, run `uv run ruff format .`. Ruff lint fixes should
-be reviewed before committing; inspect them first with `uv run ruff check .`.
+To apply Ruff's safe formatting changes locally, run `uv run ruff format .`. Ruff lint fixes should be reviewed before committing; inspect them first with `uv run ruff check .`.

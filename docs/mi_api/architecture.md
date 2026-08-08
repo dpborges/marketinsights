@@ -3,14 +3,13 @@
 ## Goals
 
 The API is a modular HTTP delivery layer around the existing Market Insights SDK and database
-packages. It does not duplicate business logic, provider code, persistence models, migrations, or
-CLI behavior.
+packages. It does not duplicate business logic, provider code, persistence models, migrations, or CLI behavior.
 
 The design uses:
 
 - FastAPI with Pydantic v2 models.
 - An application factory for isolated construction and test configuration.
-- Small APIRouter modules organized by HTTP responsibility.
+- Small APIRouter modules organized by HTTP responsibility, which effective maps to business domains.
 - Dependency providers for settings and request-scoped database sessions.
 - Centralized, environment-driven Pydantic settings.
 - Structured JSON logging in production and readable structured logs elsewhere.
@@ -45,12 +44,10 @@ Existing modules retain their responsibilities:
 
 ## Request flow
 
-An HTTP request passes through trusted-host, request-correlation, CORS, and compression middleware
-before reaching a router. The router validates input into a public schema and obtains services or
-sessions through dependencies. Business behavior remains in SDK services. Known failures are
-translated into stable public error codes; unexpected failures are logged with request context and
-returned as sanitized HTTP 500 responses.
+An HTTP request passes through trusted-host, request-correlation, CORS, and compression middleware before reaching a router. 
+The router validates input into a public schema and obtains services or
+sessions through dependencies. 
+Business behavior remains in SDK services. 
+Known failures are translated into stable public error codes; unexpected failures are logged with request context and returned as sanitized HTTP 500 responses.
 
-The liveness endpoint performs no external I/O. Readiness checks PostgreSQL only when configured
-and Redis only when marked required. This keeps local and unit-test construction independent of
-live infrastructure while allowing production orchestration to detect dependency failures.
+The liveness endpoint performs no external I/O. Readiness checks PostgreSQL only when configured and Redis only when marked required. This keeps local and unit-test construction independent of live infrastructure while allowing production orchestration to detect dependency failures.

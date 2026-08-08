@@ -24,11 +24,34 @@ logger = get_logger(__name__)
 class APIError(Exception):
     """A known error safe to translate into a public response."""
 
-    def __init__(self, code: str, message: str, status_code: int) -> None:
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        status_code: int,
+        *,
+        parameter: str | None = None,
+        allowed_values: Sequence[str] | None = None,
+    ) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
         self.status_code = status_code
+        self.parameter = parameter
+        self.allowed_values = list(allowed_values) if allowed_values is not None else None
+
+
+class InvalidQueryParameterError(APIError):
+    """A query parameter contains a value outside its public contract."""
+
+    def __init__(self, message: str, parameter: str, allowed_values: Sequence[str]) -> None:
+        super().__init__(
+            "INVALID_QUERY_PARAMETER",
+            message,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            parameter=parameter,
+            allowed_values=allowed_values,
+        )
 
 
 class ResourceNotFoundError(APIError):
@@ -48,6 +71,8 @@ def _error_response(
     status_code: int,
     code: str,
     message: str,
+    parameter: str | None = None,
+    allowed_values: Sequence[str] | None = None,
     details: Sequence[ErrorDetail | dict[str, Any]] | None = None,
 ) -> JSONResponse:
     envelope = ErrorEnvelope(
@@ -55,10 +80,15 @@ def _error_response(
             code=code,
             message=message,
             requestId=_request_id(request),
+            parameter=parameter,
+            allowedValues=list(allowed_values) if allowed_values is not None else None,
             details=list(details or []),
         )
     )
-    return JSONResponse(status_code=status_code, content=envelope.model_dump(by_alias=True))
+    return JSONResponse(
+        status_code=status_code,
+        content=envelope.model_dump(by_alias=True, exclude_none=True),
+    )
 
 
 async def validation_exception_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -89,6 +119,8 @@ async def api_exception_handler(request: Request, exc: Exception) -> JSONRespons
         status_code=exc.status_code,
         code=exc.code,
         message=exc.message,
+        parameter=exc.parameter,
+        allowed_values=exc.allowed_values,
     )
 
 
