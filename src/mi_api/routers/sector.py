@@ -10,6 +10,8 @@ from mi_api.schemas.sector import SectorSummaryResponse
 from mi_sdk.services.sector_summary_service import (
     DEFAULT_SECTOR_SYMBOLS,
     SUPPORTED_PERIODS,
+    SUPPORTED_SORT_DIRECTIONS,
+    SUPPORTED_SORT_FIELDS,
     SectorSummaryService,
 )
 
@@ -17,6 +19,15 @@ router = APIRouter(prefix="/sector", tags=["sector"])
 
 SUPPORTED_PERIOD_CODES = tuple(SUPPORTED_PERIODS)
 SUPPORTED_SYMBOLS = tuple(DEFAULT_SECTOR_SYMBOLS)
+
+
+def _parse_sort_parameter(value: str, *, parameter: str, allowed_values: tuple[str, ...]) -> str:
+    normalized = value.strip().lower()
+    if normalized not in allowed_values:
+        raise InvalidQueryParameterError(
+            f"Unsupported {parameter}: {value}", parameter, allowed_values
+        )
+    return normalized
 
 
 def _parse_csv_parameter(
@@ -59,7 +70,8 @@ def _parse_csv_parameter(
         "Return SPDR sector ETF performance relative to SPY. Filters are optional, "
         "case-insensitive, comma-separated lists. The 1D period means one trading "
         "session. When omitted, periods defaults to 2W and symbols defaults to all "
-        "supported sector ETFs."
+        "supported sector ETFs. Sorting defaults to relative strength descending. "
+        "For multiple periods, sectors are sorted using the first requested period."
     ),
 )
 def sector_summary(
@@ -84,6 +96,23 @@ def sector_summary(
             examples=["XLF,XLK,XLV"],
         ),
     ] = None,
+    sort_by: Annotated[
+        str,
+        Query(
+            description=(
+                "Sort sectors by performance (returnPct) or relative_strength "
+                "(excessReturnPct). Case-insensitive; uses the first requested period."
+            ),
+            json_schema_extra={"enum": list(SUPPORTED_SORT_FIELDS)},
+        ),
+    ] = "relative_strength",
+    sort_direction: Annotated[
+        str,
+        Query(
+            description="Sort direction: asc or desc (case-insensitive).",
+            json_schema_extra={"enum": list(SUPPORTED_SORT_DIRECTIONS)},
+        ),
+    ] = "desc",
 ) -> SectorSummaryResponse:
     """Validate filters and delegate sector-summary construction to the SDK."""
 
@@ -100,5 +129,13 @@ def sector_summary(
     result = service.build_sector_summary(
         symbols=sector_symbols,
         period_codes=period_codes,
+        sort_by=_parse_sort_parameter(
+            sort_by, parameter="sort_by", allowed_values=SUPPORTED_SORT_FIELDS
+        ),
+        sort_direction=_parse_sort_parameter(
+            sort_direction,
+            parameter="sort_direction",
+            allowed_values=SUPPORTED_SORT_DIRECTIONS,
+        ),
     )
     return SectorSummaryResponse.model_validate(result)

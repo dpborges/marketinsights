@@ -1,13 +1,16 @@
 """Tests for the sector summary service.
 
 Run from the project root with:
-    pytest tests/test_sector_summary_service.py -q
+    python -m pytest tests/test_sector_summary_service.py -q
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
+from mi_sdk.domain.exceptions import DataValidationError
 from mi_sdk.services.sector_summary_service import SectorSummaryService
 
 
@@ -75,6 +78,7 @@ def test_build_summary_uses_default_symbols_and_period() -> None:
     assert result["benchmark"]["symbol"] == "SPY"
     assert result["period"]["periodCode"] == "2W"
     assert result["sectors"][0]["ranking"]["relativeStrengthRank"] == 1
+    assert result["sectors"][0]["symbol"] == "XLB"
 
 
 def test_build_summary_supports_multiple_periods() -> None:
@@ -86,7 +90,12 @@ def test_build_summary_supports_multiple_periods() -> None:
     )
     service = SectorSummaryService(adapter=adapter)
 
-    result = service.build_sector_summary(symbols=["XLK"], period_codes=["2W", "1M"])
+    result = service.build_sector_summary(
+        symbols=["XLK"],
+        period_codes=["2W", "1M"],
+        sort_by="performance",
+        sort_direction="asc",
+    )
 
     assert result["benchmark"]["periods"][0]["periodCode"] == "2W"
     assert result["benchmark"]["periods"][1]["periodCode"] == "1M"
@@ -103,6 +112,44 @@ def test_build_summary_normalizes_alias_period_codes() -> None:
     )
     service = SectorSummaryService(adapter=adapter)
 
-    result = service.build_sector_summary(symbols=["XLK"], period_codes=["6m", "year to date", "1 year"])
+    result = service.build_sector_summary(
+        symbols=["XLK"], period_codes=["6m", "year to date", "1 year"]
+    )
 
-    assert [period["periodCode"] for period in result["benchmark"]["periods"]] == ["6M", "YTD", "1Y"]
+    assert [period["periodCode"] for period in result["benchmark"]["periods"]] == [
+        "6M",
+        "YTD",
+        "1Y",
+    ]
+
+
+def test_build_summary_sorts_by_performance_ascending() -> None:
+    adapter = StubAdapter(
+        {
+            "SPY": {"current": 100.0, "lookback": 100.0},
+            "XLK": {"current": 110.0, "lookback": 100.0},
+            "XLE": {"current": 95.0, "lookback": 100.0},
+            "XLV": {"current": 105.0, "lookback": 100.0},
+        }
+    )
+    service = SectorSummaryService(adapter=adapter)
+
+    result = service.build_sector_summary(
+        symbols=["XLK", "XLE", "XLV"],
+        period_codes=["2W"],
+        sort_by="performance",
+        sort_direction="asc",
+    )
+
+    assert [sector["symbol"] for sector in result["sectors"]] == ["XLE", "XLV", "XLK"]
+
+
+@pytest.mark.parametrize(
+    ("parameter", "value"),
+    [("sort_by", "return"), ("sort_direction", "up")],
+)
+def test_build_summary_rejects_invalid_sort_options(parameter: str, value: str) -> None:
+    service = SectorSummaryService(adapter=StubAdapter({}))
+
+    with pytest.raises(DataValidationError, match=parameter):
+        service.build_sector_summary(**{parameter: value})

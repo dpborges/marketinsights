@@ -8,16 +8,19 @@ Service parameters:
   supported sector ETFs.
 - period_codes: optional list of supported period codes. When omitted, the service
   uses a single default period of "2W".
+- sort_by: optional sort metric, either "performance" or "relative_strength".
+- sort_direction: optional sort direction, either "asc" or "desc".
 
 If no parameters are provided, the service returns a summary for all SPDR ETFs for
-the 2-week period.
+the 2-week period, sorted by relative strength in descending order.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from datetime import date
-from typing import Any, Sequence
+from typing import Any
 
 from ..domain.exceptions import DataValidationError
 
@@ -97,6 +100,9 @@ PERIOD_ALIASES = {
     "5YEARS": "5Y",
 }
 
+SUPPORTED_SORT_FIELDS = ("performance", "relative_strength")
+SUPPORTED_SORT_DIRECTIONS = ("asc", "desc")
+
 
 class SectorSummaryService:
     """Build sector performance summaries from historical price data."""
@@ -108,11 +114,15 @@ class SectorSummaryService:
         self,
         symbols: Sequence[str] | None = None,
         period_codes: Sequence[str] | None = None,
+        sort_by: str = "relative_strength",
+        sort_direction: str = "desc",
     ) -> dict[str, Any]:
         """Build a sector summary for the requested symbols and periods."""
 
         requested_symbols = self._normalize_symbols(symbols)
         requested_periods = self._normalize_periods(period_codes)
+        normalized_sort_by = self._normalize_sort_by(sort_by)
+        normalized_sort_direction = self._normalize_sort_direction(sort_direction)
         as_of_date = date.today().isoformat()
 
         errors: list[dict[str, Any]] = []
@@ -130,10 +140,7 @@ class SectorSummaryService:
                 lookback_periods=period_config["tradingDays"],
             )
 
-            prices = {
-                price_item["symbol"]: price_item
-                for price_item in response.get("prices", [])
-            }
+            prices = {price_item["symbol"]: price_item for price_item in response.get("prices", [])}
             last_prices = prices
             errors.extend(response.get("errors", []))
 
@@ -212,15 +219,14 @@ class SectorSummaryService:
                 ranked_period_summaries,
                 return_ranks,
                 strength_ranks,
+                strict=True,
             ):
                 summary["ranking"] = {
                     "returnRank": return_rank,
                     "relativeStrengthRank": strength_rank,
                 }
 
-            ranked_period_summaries.sort(
-                key=lambda item: item["ranking"]["relativeStrengthRank"]
-            )
+            ranked_period_summaries.sort(key=lambda item: item["ranking"]["relativeStrengthRank"])
 
             for summary in ranked_period_summaries:
                 sector_periods[summary["symbol"]].append(summary)
@@ -261,10 +267,12 @@ class SectorSummaryService:
                     }
                 )
 
+        sectors_payload.sort(
+            key=lambda item: self._sort_value(item, normalized_sort_by),
+            reverse=normalized_sort_direction == "desc",
+        )
+
         if len(requested_periods) == 1:
-            sectors_payload.sort(
-                key=lambda item: item["ranking"]["relativeStrengthRank"]
-            )
             return {
                 "provider": "FMP",
                 "status": "SUCCESS" if not errors else "PARTIAL_SUCCESS",
@@ -320,6 +328,14 @@ class SectorSummaryService:
             "errors": errors,
         }
 
+    def _sort_value(self, sector: dict[str, Any], sort_by: str) -> float:
+        """Return the selected metric, using the first period for multi-period output."""
+
+        summary = sector["periods"][0] if "periods" in sector else sector
+        if sort_by == "performance":
+            return float(summary["performance"]["returnPct"])
+        return float(summary["relativeStrength"]["excessReturnPct"])
+
     def _get_benchmark_price(self, prices: dict[str, Any], key: str) -> float:
         benchmark_price = prices.get("SPY")
         if benchmark_price is None:
@@ -333,9 +349,7 @@ class SectorSummaryService:
         normalized = [symbol.upper() for symbol in symbols]
         invalid_symbols = [symbol for symbol in normalized if symbol not in SECTOR_METADATA]
         if invalid_symbols:
-            raise DataValidationError(
-                f"Unsupported sector symbols: {', '.join(invalid_symbols)}"
-            )
+            raise DataValidationError(f"Unsupported sector symbols: {', '.join(invalid_symbols)}")
         return normalized
 
     def _normalize_periods(self, period_codes: Sequence[str] | None) -> list[str]:
@@ -353,9 +367,23 @@ class SectorSummaryService:
             normalized.append(candidate)
 
         if invalid_periods:
-            raise DataValidationError(
-                f"Unsupported period codes: {', '.join(invalid_periods)}"
-            )
+            raise DataValidationError(f"Unsupported period codes: {', '.join(invalid_periods)}")
+        return normalized
+
+    def _normalize_sort_by(self, sort_by: str) -> str:
+        if not isinstance(sort_by, str):
+            raise DataValidationError("sort_by must be either 'performance' or 'relative_strength'")
+        normalized = sort_by.strip().lower()
+        if normalized not in SUPPORTED_SORT_FIELDS:
+            raise DataValidationError("sort_by must be either 'performance' or 'relative_strength'")
+        return normalized
+
+    def _normalize_sort_direction(self, sort_direction: str) -> str:
+        if not isinstance(sort_direction, str):
+            raise DataValidationError("sort_direction must be either 'asc' or 'desc'")
+        normalized = sort_direction.strip().lower()
+        if normalized not in SUPPORTED_SORT_DIRECTIONS:
+            raise DataValidationError("sort_direction must be either 'asc' or 'desc'")
         return normalized
 
     def _assign_ranks(
