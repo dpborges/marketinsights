@@ -1,12 +1,18 @@
 # API testing
 
-Run commands from the repository root.
+Run commands from the repository root in Git Bash. Use forward slashes in executable paths.
+
+The commands below disable Git Bash path conversion for that invocation and explicitly
+set `API_V1_PREFIX=/api/v1`. Otherwise, Git Bash can convert an exported prefix into
+`C:/Program Files/Git/api/v1`, causing settings validation to fail during test collection.
+These settings apply only to the command; they do not modify `.env`.
 
 ## Sector summary API test harness
 
 Run only the sector summary endpoint tests:
 
-```powershell
+```bash
+MSYS_NO_PATHCONV=1 API_V1_PREFIX=/api/v1 \
 uv run pytest tests/api/test_sector_summary.py -q
 ```
 
@@ -19,13 +25,15 @@ single- and multi-period ordering while preserving the response payload.
 
 ## All API tests
 
-```powershell
+```bash
+MSYS_NO_PATHCONV=1 API_V1_PREFIX=/api/v1 \
 uv run pytest tests/api -q
 ```
 
 ## Complete test suite
 
-```powershell
+```bash
+MSYS_NO_PATHCONV=1 API_V1_PREFIX=/api/v1 \
 uv run pytest
 ```
 
@@ -57,6 +65,64 @@ Use `&` between query parameters and commas only within lists:
 
 Run the API harness together with the SDK sector summary tests:
 
-```powershell
-uv run pytest tests/api/test_sector_summary.py tests/test_sector_summary_service.py -q
+```bash
+MSYS_NO_PATHCONV=1 API_V1_PREFIX=/api/v1 \
+uv run pytest tests/api/test_sector_summary.py tests/sdk/test_sector_summary_service.py -q
 ```
+
+
+## Sector leadership API test harness
+
+Run from the repository root:
+
+```bash
+MSYS_NO_PATHCONV=1 API_V1_PREFIX=/api/v1 \
+./.venv/Scripts/python.exe -m pytest tests/api/test_sector_leadership.py -q
+```
+
+Or with uv:
+
+```bash
+MSYS_NO_PATHCONV=1 API_V1_PREFIX=/api/v1 \
+uv run pytest tests/api/test_sector_leadership.py -q
+```
+
+Run the leadership API and SDK tests together:
+
+```bash
+MSYS_NO_PATHCONV=1 API_V1_PREFIX=/api/v1 \
+./.venv/Scripts/python.exe -m pytest tests/api/test_sector_leadership.py tests/sdk/test_sector_leadership_service.py -q
+```
+
+The API harness injects the real leadership and summary SDK services with a mocked price
+adapter. No API key or network connection is needed. Tests cover explicit and default
+periods, top 3 and top 5 selection, default top 5, normalized CSV periods, query validation,
+response aliases, partial data errors, fatal SDK errors, sanitized unexpected failures,
+and OpenAPI documentation.
+
+### Requests and defaults
+
+```text
+/api/v1/sector/leadership?periods=2W,1M,3M&top_n=3
+/api/v1/sector/leadership?periods=2W,1M,3M&top_n=5
+/api/v1/sector/leadership?top_n=3
+/api/v1/sector/leadership?top_n=5
+```
+
+Omitting `periods` uses `2W,1M,3M`. Leadership requires all three periods, because the
+SDK uses 1M as anchor, 2W as momentum, and 3M as confirmation. Other periods supported
+by sector summary cannot be used for leadership. CSV input is case-insensitive,
+whitespace is trimmed, and duplicates are removed.
+
+`top_n` accepts only `3` or `5` and defaults to `5`. Invalid values return HTTP 422
+with the specified message `Invald top_n value. Only 3 and 5 are supported`.
+`top_n=3` returns up to three sectors even when periods are omitted.
+
+Successful responses preserve the SDK payload, including `errors` and coverage counts
+before top-N selection. Partial results return HTTP 200 with their errors intact.
+Fatal SDK errors return the leadership response shape with no sectors, zero successes,
+11 failures, and a safe error entry containing a code, message, and request ID.
+For fatal failures, `asOfDate` is the server request date rather than a market-data date.
+HTTP status codes follow the central SDK exception mapping (for example, 422 for SDK
+validation and 503 for provider unavailability). Invalid query parameters and unexpected
+errors retain the standard API `error` envelope; unexpected errors return a sanitized 500.

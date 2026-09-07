@@ -1,12 +1,20 @@
-"""Sector-related API endpoints."""
+"""Sector API services.
+
+sector_summary: GET /api/v1/sector/summary for sector performance versus SPY.
+sector_leadership: GET /api/v1/sector/leadership for the top 3 or 5 leaders,
+using 1M as anchor, 2W as momentum, and 3M as confirmation.
+"""
 
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from mi_api.dependencies import get_sector_summary_service
-from mi_api.errors import InvalidQueryParameterError
-from mi_api.schemas.sector import SectorSummaryResponse
+from mi_api.dependencies import get_sector_leadership_service, get_sector_summary_service
+from mi_api.errors import InvalidQueryParameterError, SectorLeadershipSdkError
+from mi_api.schemas.errors import ErrorEnvelope
+from mi_api.schemas.sector import SectorLeadershipResponse, SectorSummaryResponse
+from mi_sdk.domain.exceptions import SdkError
+from mi_sdk.services.sector_leadership_service import LEADERSHIP_PERIODS, SectorLeadershipService
 from mi_sdk.services.sector_summary_service import (
     DEFAULT_SECTOR_SYMBOLS,
     SUPPORTED_PERIODS,
@@ -139,3 +147,63 @@ def sector_summary(
         ),
     )
     return SectorSummaryResponse.model_validate(result)
+
+
+@router.get(
+    "/leadership",
+    response_model=SectorLeadershipResponse,
+    response_model_by_alias=True,
+    summary="Get sector leadership",
+    description=(
+        "Return the top 3 or 5 sectors ranked by 1M relative strength against SPY. "
+        "Leadership requires exactly 2W, 1M, and 3M; omitted periods use these defaults. "
+        "Partial SDK errors remain in errors. Fatal SDK errors use the same response "
+        "shape with an empty sectors list and a non-success HTTP status."
+    ),
+    responses={
+        **{
+            code: {"model": SectorLeadershipResponse, "description": "SDK workflow failed"}
+            for code in (401, 403, 404, 503)
+        },
+        422: {
+            "model": ErrorEnvelope | SectorLeadershipResponse,
+            "description": "Invalid query parameter or SDK data validation failure",
+        },
+    },
+)
+def sector_leadership(
+    service: Annotated[SectorLeadershipService, Depends(get_sector_leadership_service)],
+    periods: Annotated[
+        str | None,
+        Query(
+            description="Comma-separated leadership periods: exactly 2W, 1M, 3M.",
+            examples=["2W,1M,3M"],
+        ),
+    ] = None,
+    top_n: Annotated[
+        str,
+        Query(
+            description="Number of sector leaders: 3 or 5; defaults to 5.",
+            json_schema_extra={"enum": ["3", "5"]},
+        ),
+    ] = "5",
+) -> SectorLeadershipResponse:
+    """Validate leadership filters and delegate ranking to the SDK."""
+    if top_n not in {"3", "5"}:
+        raise InvalidQueryParameterError(
+            "Invald top_n value. Only 3 and 5 are supported", "top_n", ("3", "5")
+        )
+    period_codes = _parse_csv_parameter(
+        periods, parameter="periods", allowed_values=LEADERSHIP_PERIODS
+    )
+    if period_codes is None:
+        period_codes = list(LEADERSHIP_PERIODS)
+    if set(period_codes) != set(LEADERSHIP_PERIODS):
+        raise InvalidQueryParameterError(
+            "Leadership requires exactly 2W, 1M, and 3M.", "periods", LEADERSHIP_PERIODS
+        )
+    try:
+        result = service.build_sector_leadership(periods=period_codes, top_n=int(top_n))
+    except SdkError as exc:
+        raise SectorLeadershipSdkError(exc) from exc
+    return SectorLeadershipResponse.model_validate(result)

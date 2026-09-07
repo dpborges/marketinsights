@@ -17,3 +17,4 @@ pytest tests/test_sector_performance_service.py
 python -m pytest tests/test_sector_performance_service.py
 #### How to run test for fmp_adapter
 pytest tests/test_fmp_adapter.py -q
+

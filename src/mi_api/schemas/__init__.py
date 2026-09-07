@@ -2,7 +2,7 @@
 
 from .errors import ErrorEnvelope
 from .health import HealthResponse, ReadinessResponse
-from .sector import SectorSummaryResponse
+from .sector import SectorLeadershipResponse, SectorSummaryResponse
 from .system import SystemInfoResponse
 
 __all__ = [
@@ -10,5 +10,6 @@ __all__ = [
     "HealthResponse",
     "ReadinessResponse",
     "SectorSummaryResponse",
+    "SectorLeadershipResponse",
     "SystemInfoResponse",
 ]

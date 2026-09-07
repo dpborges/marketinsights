@@ -1,7 +1,7 @@
 """Tests for the sector summary service.
 
 Run from the project root with:
-    python -m pytest tests/test_sector_summary_service.py -q
+    python -m pytest tests/sdk/test_sector_summary_service.py -q
 """
 
 from __future__ import annotations

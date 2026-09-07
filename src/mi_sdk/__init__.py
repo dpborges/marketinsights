@@ -17,6 +17,7 @@ from .domain import (
 )
 from .factory import ServiceFactory
 from .interfaces import SectorPerformanceService
+from .services.sector_leadership_service import SectorLeadershipService
 
 __all__ = [
     # Settings
@@ -37,6 +38,7 @@ __all__ = [
     "UnsupportedOperationError",
     # Services
     "SectorPerformanceService",
+    "SectorLeadershipService",
     # Factory
     "ServiceFactory",
 ]

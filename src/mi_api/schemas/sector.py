@@ -1,5 +1,7 @@
 """Public response contracts for sector endpoints."""
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -114,6 +116,48 @@ class SectorSummaryResponse(BaseModel):
     successful_sector_count: int = Field(alias="successfulSectorCount")
     failed_sector_count: int = Field(alias="failedSectorCount")
     sectors: list[SectorSummary]
+    errors: list[dict[str, object]]
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class LeadershipInterpretation(BaseModel):
+    """Three-period classification provided by the SDK."""
+
+    status: Literal[
+        "strong_established_leader",
+        "emerging_leader",
+        "leader_losing_momentum",
+        "early_rotation_candidate",
+        "weak_sector",
+        "mixed_transitional",
+    ]
+    supports_entry: bool
+    reason: str
+
+
+class SectorLeader(BaseModel):
+    """A selected sector with rankings and benchmark comparison for 1M."""
+
+    symbol: str
+    sector: str
+    relative_strength_rank: int = Field(alias="relativeStrengthRank", ge=1)
+    return_rank: int = Field(alias="returnRank", ge=1)
+    outperformed_benchmark: bool = Field(alias="outperformedBenchmark")
+    interpretation: LeadershipInterpretation
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class SectorLeadershipResponse(BaseModel):
+    """Leadership results and coverage counts before top-N selection."""
+
+    benchmark: str
+    as_of_date: str = Field(alias="asOfDate")
+    requested_sector_count: int = Field(alias="requestedSectorCount", ge=0)
+    successful_sector_count: int = Field(alias="successfulSectorCount", ge=0)
+    failed_sector_count: int = Field(alias="failedSectorCount", ge=0)
+    sectors: list[SectorLeader]
     errors: list[dict[str, object]]
 
     model_config = ConfigDict(populate_by_name=True)

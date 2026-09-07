@@ -3,6 +3,7 @@
 from .config.settings import SDKSettings
 from .interfaces.sector_performance_service import SectorPerformanceService
 from .providers.fmp.fmp_adapter import FMPAdapter
+from .services.sector_leadership_service import SectorLeadershipService
 from .services.sector_performance_service import SectorPerformanceServiceImpl
 from .services.sector_summary_service import SectorSummaryService
 
@@ -24,6 +25,10 @@ class ServiceFactory:
 
         adapter = self._build_adapter()
         return SectorSummaryService(adapter=adapter)
+
+    def create_sector_leadership_service(self) -> SectorLeadershipService:
+        """Create leadership service using the configured sector summary service."""
+        return SectorLeadershipService(self.create_sector_summary_service())
 
     def _build_adapter(self) -> FMPAdapter:
         if self.settings.provider.lower() == "fmp":

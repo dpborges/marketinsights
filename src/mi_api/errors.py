@@ -1,6 +1,8 @@
 """Application exceptions and centralized HTTP exception handlers."""
 
+import json
 from collections.abc import Sequence
+from datetime import date
 from typing import Any
 
 from fastapi import FastAPI, Request, status
@@ -10,6 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from mi_api.observability import get_logger
 from mi_api.schemas.errors import ErrorBody, ErrorDetail, ErrorEnvelope
+from mi_api.schemas.sector import SectorLeadershipResponse
 from mi_sdk.domain.exceptions import (
     AuthenticationError,
     AuthorizationError,
@@ -17,8 +20,37 @@ from mi_sdk.domain.exceptions import (
     SdkError,
     SymbolNotFoundError,
 )
+from mi_sdk.services.sector_summary_service import DEFAULT_SECTOR_SYMBOLS
 
 logger = get_logger(__name__)
+
+
+class SectorLeadershipSdkError(SdkError):
+    """Request the leadership error envelope for a failed SDK workflow."""
+
+    def __init__(self, cause: SdkError) -> None:
+        super().__init__("Sector leadership could not be calculated.")
+        self.cause = cause
+
+
+async def sector_leadership_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Reuse central SDK status codes and safe messages in the leadership shape."""
+    if not isinstance(exc, SectorLeadershipSdkError):
+        raise TypeError("Expected SectorLeadershipSdkError")
+    translated = await sdk_exception_handler(request, exc.cause)
+    error = json.loads(bytes(translated.body))["error"]
+    payload = SectorLeadershipResponse(
+        benchmark="SPY",
+        asOfDate=date.today().isoformat(),
+        requestedSectorCount=len(DEFAULT_SECTOR_SYMBOLS),
+        successfulSectorCount=0,
+        failedSectorCount=len(DEFAULT_SECTOR_SYMBOLS),
+        sectors=[],
+        errors=[error],
+    )
+    return JSONResponse(
+        status_code=translated.status_code, content=payload.model_dump(by_alias=True)
+    )
 
 
 class APIError(Exception):
@@ -209,4 +241,5 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(APIError, api_exception_handler)
     app.add_exception_handler(SdkError, sdk_exception_handler)
+    app.add_exception_handler(SectorLeadershipSdkError, sector_leadership_exception_handler)
     app.add_exception_handler(Exception, unexpected_exception_handler)
