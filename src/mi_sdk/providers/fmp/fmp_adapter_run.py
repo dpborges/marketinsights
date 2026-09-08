@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 from typing import Any
@@ -55,10 +56,10 @@ def _print_services() -> None:
         print(f"  - {name}: {description}")
 
 
-def _run_service(method_name: str, parameters: dict[str, Any]) -> None:
+async def _run_service(method_name: str, parameters: dict[str, Any]) -> None:
     adapter = FMPAdapter()
     if method_name == "get_historical_prices":
-        response = adapter.get_historical_prices(
+        response = await adapter.get_historical_prices(
             symbols=parameters["symbols"],
             as_of_date=parameters["as_of_date"],
             lookback_periods=parameters["lookback_periods"],
@@ -86,7 +87,7 @@ def main(argv: list[str] | None = None) -> None:
             raise UnsupportedOperationError(f"Unknown service: {method}")
         if method == "get_historical_prices":
             params = _prompt_for_historical_prices()
-            _run_service(method, params)
+            asyncio.run(_run_service(method, params))
         return
 
     method = argv[0]
@@ -100,7 +101,7 @@ def main(argv: list[str] | None = None) -> None:
             "as_of_date": argv[2],
             "lookback_periods": int(argv[3]),
         }
-        _run_service(method, params)
+        asyncio.run(_run_service(method, params))
         return
 
     raise UnsupportedOperationError(f"Unknown service: {method}")

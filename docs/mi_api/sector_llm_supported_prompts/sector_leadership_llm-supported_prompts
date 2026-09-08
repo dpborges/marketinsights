@@ -1,0 +1,23 @@
+An LLM connected to the `sector_leadership` API could answer questions such as:
+
+| User question | API request or response used |
+|---|---|
+| Which five sectors are leading right now? | `GET /api/v1/sector/leadership?top_n=5` |
+| Which are the top three sectors? | `GET /api/v1/sector/leadership?top_n=3` |
+| How do the leading sectors rank against SPY? | `relativeStrengthRank` |
+| Which leading sectors outperformed SPY over the past month? | `outperformedBenchmark` |
+| Which leaders have strength across all three periods (2W,1M,3M)? | Status: `strong_established_leader` |
+| Which leading sectors are emerging leaders? | Status: `emerging_leader` |
+| Which leaders are losing short-term momentum? | Status: `leader_losing_momentum` |
+| Which leaders show mixed or transitional signals? | Status: `mixed_transitional` |
+| Which leaders meet the API’s entry-support criteria? | `supports_entry` |
+| Why did the API classify a sector that way? | `interpretation.reason` |
+| Is Technology among the top five sectors? | Find Technology in the returned sectors |
+| How many sectors were successfully evaluated? | Coverage counts |
+| Were there missing data or errors affecting the results? | `errors` |
+| What is the response’s as-of date? | `asOfDate` |
+
+**Current limits:** The API returns only the top three or five sectors selected by **1M relative strength**, with **2W momentum and 3M confirmation**. It cannot currently answer questions about historical leadership changes, exact return percentages, individual stocks, or a complete ranking of all 11 sectors.
+
+Early rotation candidates and weak sectors fall outside the anchor’s top-N group, so the current endpoint does not return them.
+        

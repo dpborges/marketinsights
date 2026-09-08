@@ -3,11 +3,11 @@
     MSYS_NO_PATHCONV=1 API_V1_PREFIX=/api/v1 ./.venv/Scripts/python.exe -m pytest tests/api/test_sector_leadership.py -q
 
 
-Uses the real leadership and summary SDKs with mocked historical prices.
+Uses the real async leadership and summary SDKs with awaitable historical-price mocks.
 """
 
 from collections.abc import AsyncIterator
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import httpx
 import pytest
@@ -28,6 +28,7 @@ from mi_sdk.services.sector_summary_service import DEFAULT_SECTOR_SYMBOLS, Secto
 @pytest.fixture
 def adapter() -> Mock:
     adapter = Mock()
+    adapter.get_historical_prices = AsyncMock()
     adapter.get_historical_prices.return_value = {
         "prices": [
             {
@@ -91,8 +92,9 @@ async def test_leadership_returns_requested_count(
         assert sector["interpretation"]["supports_entry"] is True
         assert sector["interpretation"]["reason"]
     assert [
-        call.kwargs["lookback_periods"] for call in adapter.get_historical_prices.call_args_list
+        call.kwargs["lookback_periods"] for call in adapter.get_historical_prices.await_args_list
     ] == [10, 21, 63]
+    assert adapter.get_historical_prices.await_count == 3
 
 
 async def test_leadership_defaults_to_five(client: httpx.AsyncClient) -> None:

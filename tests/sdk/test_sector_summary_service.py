@@ -21,7 +21,7 @@ class StubAdapter:
         self._prices = prices
         self.calls: list[tuple[list[str], str, int]] = []
 
-    def get_historical_prices(
+    async def get_historical_prices(
         self,
         symbols: list[str],
         as_of_date: str,
@@ -52,7 +52,7 @@ class StubAdapter:
         }
 
 
-def test_build_summary_uses_default_symbols_and_period() -> None:
+async def test_build_summary_uses_default_symbols_and_period() -> None:
     adapter = StubAdapter(
         {
             "SPY": {"current": 100.0, "lookback": 97.0},
@@ -71,7 +71,7 @@ def test_build_summary_uses_default_symbols_and_period() -> None:
     )
     service = SectorSummaryService(adapter=adapter)
 
-    result = service.build_sector_summary()
+    result = await service.build_sector_summary()
 
     assert result["requestedSectorCount"] == 11
     assert result["successfulSectorCount"] == 11
@@ -81,7 +81,7 @@ def test_build_summary_uses_default_symbols_and_period() -> None:
     assert result["sectors"][0]["symbol"] == "XLB"
 
 
-def test_build_summary_supports_multiple_periods() -> None:
+async def test_build_summary_supports_multiple_periods() -> None:
     adapter = StubAdapter(
         {
             "SPY": {"current": 100.0, "lookback": 97.0},
@@ -90,7 +90,7 @@ def test_build_summary_supports_multiple_periods() -> None:
     )
     service = SectorSummaryService(adapter=adapter)
 
-    result = service.build_sector_summary(
+    result = await service.build_sector_summary(
         symbols=["XLK"],
         period_codes=["2W", "1M"],
         sort_by="performance",
@@ -103,7 +103,7 @@ def test_build_summary_supports_multiple_periods() -> None:
     assert len(result["sectors"][0]["periods"]) == 2
 
 
-def test_build_summary_normalizes_alias_period_codes() -> None:
+async def test_build_summary_normalizes_alias_period_codes() -> None:
     adapter = StubAdapter(
         {
             "SPY": {"current": 100.0, "lookback": 97.0},
@@ -112,7 +112,7 @@ def test_build_summary_normalizes_alias_period_codes() -> None:
     )
     service = SectorSummaryService(adapter=adapter)
 
-    result = service.build_sector_summary(
+    result = await service.build_sector_summary(
         symbols=["XLK"], period_codes=["6m", "year to date", "1 year"]
     )
 
@@ -123,7 +123,7 @@ def test_build_summary_normalizes_alias_period_codes() -> None:
     ]
 
 
-def test_build_summary_sorts_by_performance_ascending() -> None:
+async def test_build_summary_sorts_by_performance_ascending() -> None:
     adapter = StubAdapter(
         {
             "SPY": {"current": 100.0, "lookback": 100.0},
@@ -134,7 +134,7 @@ def test_build_summary_sorts_by_performance_ascending() -> None:
     )
     service = SectorSummaryService(adapter=adapter)
 
-    result = service.build_sector_summary(
+    result = await service.build_sector_summary(
         symbols=["XLK", "XLE", "XLV"],
         period_codes=["2W"],
         sort_by="performance",
@@ -148,8 +148,8 @@ def test_build_summary_sorts_by_performance_ascending() -> None:
     ("parameter", "value"),
     [("sort_by", "return"), ("sort_direction", "up")],
 )
-def test_build_summary_rejects_invalid_sort_options(parameter: str, value: str) -> None:
+async def test_build_summary_rejects_invalid_sort_options(parameter: str, value: str) -> None:
     service = SectorSummaryService(adapter=StubAdapter({}))
 
     with pytest.raises(DataValidationError, match=parameter):
-        service.build_sector_summary(**{parameter: value})
+        await service.build_sector_summary(**{parameter: value})

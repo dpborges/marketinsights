@@ -2,7 +2,7 @@
 
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import httpx
 import pytest
@@ -20,7 +20,7 @@ class StubSectorSummaryService:
     def __init__(self) -> None:
         self.calls: list[dict[str, Sequence[str] | None]] = []
 
-    def build_sector_summary(
+    async def build_sector_summary(
         self,
         symbols: Sequence[str] | None = None,
         period_codes: Sequence[str] | None = None,
@@ -266,6 +266,7 @@ async def test_summary_sorts_sdk_results_without_changing_payload(
     sort_by: str,
 ) -> None:
     adapter = Mock()
+    adapter.get_historical_prices = AsyncMock()
     adapter.get_historical_prices.return_value = {
         "prices": [
             {
@@ -294,3 +295,45 @@ async def test_summary_sorts_sdk_results_without_changing_payload(
     assert asc_payload == desc_payload
     if "," in periods:
         assert [item["periodCode"] for item in asc_payload["sectors"][0]["periods"]] == ["1M", "2W"]
+
+
+@pytest.mark.asyncio
+async def test_summary_awaits_real_sdk_and_async_provider(
+    client: httpx.AsyncClient,
+    application: FastAPI,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exercise route -> SDK -> adapter -> async HTTP transport without network I/O."""
+    from mi_sdk.providers.fmp.fmp_adapter import FMPAdapter
+
+    requested_symbols: list[str] = []
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        symbol = request.url.params["symbol"]
+        requested_symbols.append(symbol)
+        return httpx.Response(
+            200,
+            json=[
+                {"date": "2026-01-01", "adjClose": 100.0},
+                {"date": "2026-01-02", "adjClose": 102.0 if symbol == "SPY" else 110.0},
+            ],
+        )
+
+    async_client = httpx.AsyncClient
+    clients: list[httpx.AsyncClient] = []
+
+    def make_client(**kwargs: Any) -> httpx.AsyncClient:
+        instance = async_client(transport=httpx.MockTransport(respond), **kwargs)
+        clients.append(instance)
+        return instance
+
+    monkeypatch.setattr("mi_sdk.providers.fmp.fmp_adapter.httpx.AsyncClient", make_client)
+    service = SectorSummaryService(FMPAdapter(api_key="test-key"))
+    application.dependency_overrides[get_sector_summary_service] = lambda: service
+    response = await client.get("/api/v1/sector/summary?symbols=XLK&periods=1D")
+    assert response.status_code == 200
+    assert requested_symbols == ["XLK", "SPY"]
+    sector = response.json()["sectors"][0]
+    assert sector["performance"]["returnPct"] == 10.0
+    assert sector["relativeStrength"]["excessReturnPct"] == 8.0
+    assert all(instance.is_closed for instance in clients)

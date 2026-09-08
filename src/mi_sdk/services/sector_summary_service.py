@@ -23,6 +23,7 @@ from datetime import date
 from typing import Any
 
 from ..domain.exceptions import DataValidationError
+from ..interfaces.adapters import HistoricalPricingAdapter
 
 DEFAULT_SECTOR_SYMBOLS = [
     "XLB",
@@ -107,10 +108,10 @@ SUPPORTED_SORT_DIRECTIONS = ("asc", "desc")
 class SectorSummaryService:
     """Build sector performance summaries from historical price data."""
 
-    def __init__(self, adapter: Any) -> None:
+    def __init__(self, adapter: HistoricalPricingAdapter) -> None:
         self.adapter = adapter
 
-    def build_sector_summary(
+    async def build_sector_summary(
         self,
         symbols: Sequence[str] | None = None,
         period_codes: Sequence[str] | None = None,
@@ -134,7 +135,7 @@ class SectorSummaryService:
 
         for period_code in requested_periods:
             period_config = SUPPORTED_PERIODS[period_code]
-            response = self.adapter.get_historical_prices(
+            response = await self.adapter.get_historical_prices(
                 [*requested_symbols, "SPY"],
                 as_of_date=as_of_date,
                 lookback_periods=period_config["tradingDays"],

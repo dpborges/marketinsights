@@ -126,3 +126,20 @@ For fatal failures, `asOfDate` is the server request date rather than a market-d
 HTTP status codes follow the central SDK exception mapping (for example, 422 for SDK
 validation and 503 for provider unavailability). Invalid query parameters and unexpected
 errors retain the standard API `error` envelope; unexpected errors return a sanitized 500.
+
+
+## Async sector summary validation
+
+The summary API awaits the summary SDK, which awaits the provider's async HTTP calls.
+Leadership also awaits summary. Python SDK callers must now use
+`await service.build_sector_summary(...)` and `await service.build_sector_leadership(...)`.
+HTTP URLs and response formats are unchanged. CLI commands manage their event loop at
+entry; no event loop bridge is used inside API requests.
+
+Run the sector summary SDK, API, and provider tests from Git Bash:
+
+```bash
+MSYS_NO_PATHCONV=1 API_V1_PREFIX=/api/v1 ./.venv/Scripts/python.exe -m pytest tests/sdk/test_sector_summary_service.py tests/api/test_sector_summary.py tests/test_fmp_adapter.py -q
+```
+
+These tests use async mocks and a mocked HTTP transport; no live provider access is needed.

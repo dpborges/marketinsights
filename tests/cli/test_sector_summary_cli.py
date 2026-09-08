@@ -12,7 +12,7 @@ class StubSectorSummaryService:
     def __init__(self) -> None:
         self.calls: list[tuple[list[str] | None, list[str] | None]] = []
 
-    def build_sector_summary(self, symbols=None, period_codes=None):
+    async def build_sector_summary(self, symbols=None, period_codes=None):
         self.calls.append((symbols, period_codes))
         return {
             "provider": "FMP",

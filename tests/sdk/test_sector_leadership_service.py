@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -55,12 +55,12 @@ def summary_fixture() -> dict[str, Any]:
     }
 
 
-def test_sector_leadership_top_three() -> None:
-    source = Mock()
+async def test_sector_leadership_top_three() -> None:
+    source = AsyncMock()
     source.build_sector_summary.return_value = summary_fixture()
     service = SectorLeadershipService(source)
-    result = service.build_sector_leadership(periods="2W,1M,3M", top_n=3)
-    source.build_sector_summary.assert_called_once_with(
+    result = await service.build_sector_leadership(periods="2W,1M,3M", top_n=3)
+    source.build_sector_summary.assert_awaited_once_with(
         period_codes=["2W", "1M", "3M"], sort_by="relative_strength", sort_direction="desc"
     )
     assert result["benchmark"] == "SPY"
@@ -83,18 +83,21 @@ def test_sector_leadership_top_three() -> None:
     assert result["errors"] == []
     for periods, top_n in [("2W,1M", 3), ("2W,1M,3M", 0), ("2W,1M,3M", True)]:
         with pytest.raises(DataValidationError):
-            service.build_sector_leadership(periods=periods, top_n=top_n)
+            await service.build_sector_leadership(periods=periods, top_n=top_n)
     source.build_sector_summary.side_effect = ProviderUnavailableError("Unavailable")
     with pytest.raises(ProviderUnavailableError):
-        service.build_sector_leadership(top_n=3)
+        await service.build_sector_leadership(top_n=3)
 
 
-def test_sector_leadership_top_five() -> None:
-    source = Mock()
+async def test_sector_leadership_top_five() -> None:
+    source = AsyncMock()
     payload = summary_fixture()
     source.build_sector_summary.return_value = payload
     service = SectorLeadershipService(source)
-    result = service.build_sector_leadership(periods=["2W", "1M", "3M"], top_n=5)
+    result = await service.build_sector_leadership(periods=["2W", "1M", "3M"], top_n=5)
+    source.build_sector_summary.assert_awaited_once_with(
+        period_codes=["2W", "1M", "3M"], sort_by="relative_strength", sort_direction="desc"
+    )
     assert [s["symbol"] for s in result["sectors"]] == ["XLK", "XLC", "XLI", "XLF", "XLB"]
     assert [s["relativeStrengthRank"] for s in result["sectors"]] == [1, 2, 3, 4, 5]
     assert result["sectors"][3]["interpretation"]["status"] == "mixed_transitional"
@@ -107,20 +110,20 @@ def test_sector_leadership_top_five() -> None:
     for sector in payload["sectors"]:
         if sector["symbol"] == "XLC":
             sector["periods"][1]["ranking"]["returnRank"] = 1
-    assert service.build_sector_leadership()["sectors"][0]["symbol"] == "XLK"
+    assert (await service.build_sector_leadership())["sectors"][0]["symbol"] == "XLK"
     # Equal return ranks across all periods leave alphabetical order as fallback.
     for sector in payload["sectors"]:
         if sector["symbol"] in {"XLK", "XLC"}:
             for period in sector["periods"]:
                 period["ranking"]["returnRank"] = 1
     payload["sectors"].reverse()
-    assert service.build_sector_leadership()["sectors"][0]["symbol"] == "XLC"
+    assert (await service.build_sector_leadership())["sectors"][0]["symbol"] == "XLC"
 
     partial = deepcopy(payload)
     partial["sectors"][0]["periods"].pop()
     partial["errors"] = [{"symbol": partial["sectors"][0]["symbol"], "message": "Missing prices"}]
     source.build_sector_summary.return_value = partial
-    result = service.build_sector_leadership(top_n=5)
+    result = await service.build_sector_leadership(top_n=5)
     assert len(result["sectors"]) == 5
     assert result["successfulSectorCount"] == 10
     assert result["failedSectorCount"] == 1

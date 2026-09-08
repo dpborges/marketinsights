@@ -62,7 +62,7 @@ class FMPAdapter:
                 "Missing FMP API key. Set MARKET_FMP_API_KEY in the environment or .env file."
             )
 
-    def get_historical_prices(
+    async def get_historical_prices(
         self,
         symbols: Sequence[str],
         as_of_date: str,
@@ -89,7 +89,7 @@ class FMPAdapter:
 
         for symbol in validated_symbols:
             try:
-                historical_data = self._fetch_historical_series(symbol, as_of, lookback)
+                historical_data = await self._fetch_historical_series(symbol, as_of, lookback)
                 current_price, lookback_price = self._extract_prices(
                     historical_data, as_of, lookback
                 )
@@ -102,7 +102,7 @@ class FMPAdapter:
                 )
             except ProviderUnavailableError as error:
                 if self._is_symbol_level_error(error):
-                    error_code, error_message = self._classify_symbol_error(symbol, error)
+                    error_code, error_message = await self._classify_symbol_error(symbol, error)
                     errors.append(
                         {
                             "symbol": symbol,
@@ -145,13 +145,13 @@ class FMPAdapter:
             )
         )
 
-    def _classify_symbol_error(
+    async def _classify_symbol_error(
         self, symbol: str, error: ProviderUnavailableError
     ) -> tuple[str, str]:
         message = str(error)
         if "No historical pricing returned for symbol" in message:
             try:
-                if self._symbol_exists(symbol):
+                if await self._symbol_exists(symbol):
                     return "NO_PRICE_DATA", message
                 return "SYMBOL_NOT_FOUND", f"Symbol not found: {symbol}."
             except ProviderUnavailableError:
@@ -168,13 +168,13 @@ class FMPAdapter:
 
         return "HISTORICAL_PRICING_ERROR", message
 
-    def _symbol_exists(self, symbol: str) -> bool:
+    async def _symbol_exists(self, symbol: str) -> bool:
         url = f"{self.base_url}/quote/{symbol}"
         params = {"apikey": self.api_key}
 
         try:
-            with httpx.Client(timeout=self.timeout) as client:
-                response = client.get(url, params=params)
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(url, params=params)
                 response.raise_for_status()
                 payload = response.json()
         except httpx.HTTPStatusError as exc:
@@ -205,109 +205,6 @@ class FMPAdapter:
             )
 
         return bool(payload and payload[0].get("symbol") == symbol)
-
-#    async def fetch_sector_performance(
-#        self, request: SectorPerformanceRequest
-#    ) -> SectorPerformanceResponse:
-#        """Fetch sector performance data from FMP."""
-#
-#        invalid_symbols = [s for s in request.symbols if s not in self.SECTOR_MAPPING]
-#        if invalid_symbols:
-#            raise SymbolNotFoundError(
-#                f"Invalid sector ETF symbols: {invalid_symbols}. "
-#                f"Supported symbols: {list(self.SECTOR_MAPPING.keys())}"
-#            )
-#
-#        try:
-#            quotes = await self._fetch_quotes_batch(request.symbols)
-#            performances = []
-#            for quote_data in quotes:
-#                symbol = quote_data.get("symbol", "")
-#                sector = self.SECTOR_MAPPING.get(symbol, "Unknown")
-#                performance = self.mapper.to_sector_performance(quote_data, sector)
-#                performances.append(performance)
-#
-#            return SectorPerformanceResponse(performances=performances)
-#        except httpx.HTTPError as error:
-#            raise ProviderUnavailableError(
-#                f"Failed to fetch data from FMP: {str(error)}"
-#            ) from error
-#        except SdkError:
-#            raise
-#        except Exception as error:
-#            raise ProviderUnavailableError(
-#                f"Unexpected error: {str(error)}"
-#            ) from error
-#
-#    async def _fetch_quotes_batch(self, symbols: List[str]) -> List[Dict[str, Any]]:
-#        async with httpx.AsyncClient(timeout=self.timeout) as client:
-#            symbols_str = ",".join(symbols)
-#            url = f"{self.base_url.rstrip('/')}/batch-quote"
-#            params = {"symbols": symbols_str, "apikey": self.api_key}
-#
-#            try:
-#                response = await client.get(url, params=params)
-#                response.raise_for_status()
-#            except httpx.HTTPStatusError as exc:
-#                status = exc.response.status_code if exc.response is not None else None
-#                if status == 401:
-#                    raise AuthenticationError(
-#                        "FMP authentication failed. Check your API key."
-#                    ) from exc
-#                if status in (402, 403):
-#                    return await self._fetch_quotes_individually(client, symbols)
-#                if status == 429:
-#                    raise RateLimitError(
-#                        "FMP rate limit exceeded. Please retry after a short delay."
-#                    ) from exc
-#                raise ProviderUnavailableError(
-#                    f"Failed to fetch data from FMP: {str(exc)}"
-#                ) from exc
-#
-#            data = response.json()
-#            if not isinstance(data, list):
-#                raise ProviderUnavailableError("Unexpected response format from FMP")
-#            return data
-#
-#    async def _fetch_quotes_individually(
-#        self, client: httpx.AsyncClient, symbols: List[str]
-#    ) -> List[Dict[str, Any]]:
-#        url = f"{self.base_url.rstrip('/')}/quote"
-#        tasks = [self._fetch_single_quote(client, url, symbol) for symbol in symbols]
-#        return await asyncio.gather(*tasks)
-#
-#    async def _fetch_single_quote(
-#        self, client: httpx.AsyncClient, url: str, symbol: str
-#    ) -> Dict[str, Any]:
-#        params = {"symbol": symbol, "apikey": self.api_key}
-#
-#        try:
-#            response = await client.get(url, params=params)
-#            response.raise_for_status()
-#        except httpx.HTTPStatusError as exc:
-#            status = exc.response.status_code if exc.response is not None else None
-#            if status == 401:
-#                raise AuthenticationError(
-#                    "FMP authentication failed. Check your API key."
-#                ) from exc
-#            if status in (402, 403):
-#                raise AuthorizationError(
-#                    "FMP authorization failed. Ensure the API key has access to this endpoint."
-#                ) from exc
-#            if status == 429:
-#                raise RateLimitError(
-#                    "FMP rate limit exceeded. Please retry after a short delay."
-#                ) from exc
-#            raise ProviderUnavailableError(
-#                f"Failed to fetch data from FMP quote: {str(exc)}"
-#            ) from exc
-#
-#        data = response.json()
-#        if not isinstance(data, list):
-#            raise ProviderUnavailableError("Unexpected response format from FMP quote")
-#        if len(data) == 0:
-#            raise ProviderUnavailableError(f"No quote data returned for symbol: {symbol}")
-#        return data[0]
 
     def _normalize_symbols(self, symbols: Sequence[str]) -> List[str]:
         if not symbols:
@@ -342,7 +239,7 @@ class FMPAdapter:
             )
         return lookback_periods
 
-    def _fetch_historical_series(
+    async def _fetch_historical_series(
         self, symbol: str, as_of: date, lookback_periods: int
     ) -> List[Dict[str, Any]]:
         date_span = timedelta(days=lookback_periods * 5 + 14)
@@ -356,8 +253,8 @@ class FMPAdapter:
         }
 
         try:
-            with httpx.Client(timeout=self.timeout) as client:
-                response = client.get(url, params=params)
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(url, params=params)
                 response.raise_for_status()
                 payload = response.json()
         except httpx.HTTPStatusError as exc:

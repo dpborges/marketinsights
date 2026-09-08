@@ -1,0 +1,29 @@
+An LLM connected to the `sector_summary` API could answer questions such as:
+
+| User question | API parameters or response used |
+|---|---|
+| How have sectors performed over the past two weeks? | `periods=2W` |
+| Which sectors performed best over the past month? | `periods=1M&sort_by=performance&sort_direction=desc` |
+| Which sectors performed worst over the past month? | `periods=1M&sort_by=performance&sort_direction=asc` |
+| Which sectors are strongest relative to SPY? | `sort_by=relative_strength&sort_direction=desc` |
+| Which sectors underperformed SPY? | `outperformedBenchmark` and `excessReturnPct` |
+| By how many percentage points did Technology beat SPY? | `symbols=XLK`; inspect `excessReturnPct` |
+| How do Technology, Financials, and Health Care compare? | `symbols=XLK,XLF,XLV` |
+| How does sector performance compare across 2W, 1M, and 3M? | `periods=2W,1M,3M` |
+| Which sectors outperformed SPY in all three periods? | Compare each period’s `outperformedBenchmark` |
+| Which sectors have improved their rank over shorter horizons? | Compare ranks across requested periods |
+| What are each sector’s return and relative-strength rankings? | `returnRank` and `relativeStrengthRank` |
+| What were the current and lookback adjusted prices for Energy? | `symbols=XLE&periods=1M`; single-period price fields |
+| How much did SPY return over the selected period? | Benchmark performance |
+| What dates were used for the comparison? | Single-period date fields or benchmark period dates |
+| Were any data retrieval errors reported? | `errors` |
+
+Supported periods are `1D`, `2W`, `1M`, `3M`, `6M`, `YTD`, `1Y`, `3Y`, and `5Y`.
+
+Example:
+
+```text
+/api/v1/sector/summary?periods=2W,1M,3M&symbols=XLK,XLF,XLV&sort_by=relative_strength&sort_direction=desc
+```
+
+**Current limits:** Multi-period results are sorted by the **first requested period**. Comparing horizons can reveal differences in strength, but it does not show historical rank changes over time. The endpoint also does not explain why sectors moved or provide individual-stock analysis.

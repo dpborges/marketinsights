@@ -1,6 +1,6 @@
 """Sector leadership anchored on 1M relative strength against SPY.
 
-The synchronous summary SDK owns data retrieval. Only sectors with all three
+The asynchronous summary SDK owns data retrieval. Only sectors with all three
 periods qualify. Counts describe coverage before truncation to ``top_n``.
 Same-period return rank breaks strength ties (lower ranks are better), followed
 by the number of pairwise period wins within the remaining tied group, then symbol.
@@ -21,7 +21,7 @@ LEADERSHIP_PERIODS = ("2W", "1M", "3M")
 class SectorSummarySource(Protocol):
     """Summary dependency, implemented by SectorSummaryService."""
 
-    def build_sector_summary(
+    async def build_sector_summary(
         self,
         symbols: Sequence[str] | None = None,
         period_codes: Sequence[str] | None = None,
@@ -48,7 +48,7 @@ class SectorLeadershipService:
     def __init__(self, summary_service: SectorSummarySource) -> None:
         self.summary_service = summary_service
 
-    def build_sector_leadership(
+    async def build_sector_leadership(
         self, periods: Sequence[str] | str | None = None, top_n: int = 5
     ) -> dict[str, Any]:
         """Return leadership; periods must contain exactly 2W, 1M, and 3M.
@@ -69,7 +69,7 @@ class SectorLeadershipService:
         ):
             raise DataValidationError("periods must contain exactly 2W, 1M, and 3M")
 
-        summary = self.summary_service.build_sector_summary(
+        summary = await self.summary_service.build_sector_summary(
             period_codes=list(LEADERSHIP_PERIODS),
             sort_by="relative_strength",
             sort_direction="desc",

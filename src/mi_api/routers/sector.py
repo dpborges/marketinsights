@@ -82,7 +82,7 @@ def _parse_csv_parameter(
         "For multiple periods, sectors are sorted using the first requested period."
     ),
 )
-def sector_summary(
+async def sector_summary(
     service: Annotated[SectorSummaryService, Depends(get_sector_summary_service)],
     periods: Annotated[
         str | None,
@@ -134,7 +134,7 @@ def sector_summary(
         parameter="symbols",
         allowed_values=SUPPORTED_SYMBOLS,
     )
-    result = service.build_sector_summary(
+    result = await service.build_sector_summary(
         symbols=sector_symbols,
         period_codes=period_codes,
         sort_by=_parse_sort_parameter(
@@ -171,7 +171,7 @@ def sector_summary(
         },
     },
 )
-def sector_leadership(
+async def sector_leadership(
     service: Annotated[SectorLeadershipService, Depends(get_sector_leadership_service)],
     periods: Annotated[
         str | None,
@@ -203,7 +203,7 @@ def sector_leadership(
             "Leadership requires exactly 2W, 1M, and 3M.", "periods", LEADERSHIP_PERIODS
         )
     try:
-        result = service.build_sector_leadership(periods=period_codes, top_n=int(top_n))
+        result = await service.build_sector_leadership(periods=period_codes, top_n=int(top_n))
     except SdkError as exc:
         raise SectorLeadershipSdkError(exc) from exc
     return SectorLeadershipResponse.model_validate(result)

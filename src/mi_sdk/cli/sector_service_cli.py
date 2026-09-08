@@ -125,9 +125,11 @@ def sector_summary(
     try:
         factory = ServiceFactory(settings)
         service = factory.create_sector_summary_service()
-        response = service.build_sector_summary(
-            symbols=parsed_symbols,
-            period_codes=parsed_periods,
+        response = asyncio.run(
+            service.build_sector_summary(
+                symbols=parsed_symbols,
+                period_codes=parsed_periods,
+            )
         )
 
         console.print(
