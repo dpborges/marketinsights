@@ -9,8 +9,7 @@ that invocation without modifying `.env`.
 
 ## Start for development
 
-```bash
-MSYS_NO_PATHCONV=1 API_V1_PREFIX=/api/v1 uv run fastapi dev src/mi_api/main.py
+```ba
 ```
 
 This starts the local development server with automatic reload. It is intended only for developer

@@ -111,6 +111,7 @@ If the tie cannot be broken using return rank, use this deterministic final fall
 “errors”: [
 	<this will show the errors that were raised as part of the SDK call to sector summary>
 ]
+}
 ```
      
 **Testing**

@@ -6,6 +6,18 @@ from typing import Any, Protocol
 from ..domain.models.sector_performance import SectorPerformanceRequest, SectorPerformanceResponse
 
 
+class AnalystAdapter(Protocol):
+    """Async provider-neutral analyst data boundary."""
+
+    async def get_analyst_consensus(self, symbol: str) -> dict[str, Any]:
+        """Return {symbol, analystConsensus: {rating: count}}."""
+        ...
+
+    async def get_analyst_targets(self, symbol: str) -> dict[str, Any]:
+        """Return {symbol, priceTarget: {high, low, median, consensus}}."""
+        ...
+
+
 class SectorPerformanceAdapter(Protocol):
     """Protocol for sector performance data adapters"""
 

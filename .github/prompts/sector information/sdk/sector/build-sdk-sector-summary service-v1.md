@@ -9,7 +9,7 @@ Constraints:
 - Must follow .github/copilot-instructions.md
 - Must not expose provider-specific logic in the SDK service
 
-Dependency: providers/fmp/smp_adapter.py get_historical_prices method
+Dependency: providers/fmp/fmp_adapter.py 
 SDK directory:   src/mi_sdk/services
 
 You are a Python SDK developer.  
