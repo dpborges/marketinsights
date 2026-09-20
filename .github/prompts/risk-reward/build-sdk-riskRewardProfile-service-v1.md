@@ -4,7 +4,7 @@ Build RiskRewardProfile SDK service
 
 Before moving forward stop here and read the **pre-execution review** document located in this file: 
 ```code
-.github/prompts/prompt_templates/pre-execution-review.md 
+.github/prompts/prompt_templates/pre-execution-extensive-review.md 
 ```
 and then we can proceed with the prompt below as directed. 
 

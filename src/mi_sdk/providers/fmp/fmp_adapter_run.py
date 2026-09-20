@@ -9,15 +9,17 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from .fmp_adapter import FMPAdapter
 from ...domain.exceptions import (
     ConfigurationError,
     DataValidationError,
     SdkError,
     UnsupportedOperationError,
 )
+from .fmp_adapter import FMPAdapter
+from .fmp_company import FMPCompanyAdapter
 
 SERVICE_METHODS = {
+    "get_profile": "Get the full company profile for one stock symbol",
     "get_historical_prices": "Get historical pricing for SPDR sector ETFs and SPY",
 }
 
@@ -26,7 +28,7 @@ def _prompt(text: str) -> str:
     try:
         return input(text).strip()
     except EOFError:
-        raise ConfigurationError("Input was closed before parameters were provided.")
+        raise ConfigurationError("Input was closed before parameters were provided.") from None
 
 
 def _prompt_for_historical_prices() -> dict[str, Any]:
@@ -57,8 +59,12 @@ def _print_services() -> None:
 
 
 async def _run_service(method_name: str, parameters: dict[str, Any]) -> None:
-    adapter = FMPAdapter()
+    if method_name == "get_profile":
+        response = await FMPCompanyAdapter().get_profile(parameters["symbol"])
+        print(json.dumps(response, indent=2))
+        return
     if method_name == "get_historical_prices":
+        adapter = FMPAdapter()
         response = await adapter.get_historical_prices(
             symbols=parameters["symbols"],
             as_of_date=parameters["as_of_date"],
@@ -74,6 +80,7 @@ def main(argv: list[str] | None = None) -> None:
 
     Exact syntax:
     python -m mi_sdk.providers.fmp.fmp_adapter_run
+    python -m mi_sdk.providers.fmp.fmp_adapter_run get_profile AAPL
     python -m mi_sdk.providers.fmp.fmp_adapter_run get_historical_prices XLK,XLV,SPY 2026-07-16 1
     """
 
@@ -85,12 +92,20 @@ def main(argv: list[str] | None = None) -> None:
         method = _prompt("Choose a service: ")
         if method not in SERVICE_METHODS:
             raise UnsupportedOperationError(f"Unknown service: {method}")
+        if method == "get_profile":
+            symbol = _prompt("Symbol (e.g. AAPL): ")
+            asyncio.run(_run_service(method, {"symbol": symbol}))
         if method == "get_historical_prices":
             params = _prompt_for_historical_prices()
             asyncio.run(_run_service(method, params))
         return
 
     method = argv[0]
+    if method == "get_profile":
+        if len(argv) != 2:
+            raise DataValidationError("Expected arguments: get_profile SYMBOL (e.g. AAPL)")
+        asyncio.run(_run_service(method, {"symbol": argv[1]}))
+        return
     if method == "get_historical_prices":
         if len(argv) != 4:
             raise DataValidationError(

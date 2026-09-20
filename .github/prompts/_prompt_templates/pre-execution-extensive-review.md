@@ -4,7 +4,16 @@ Certainly. Here is the complete version as Markdown that you can paste directly 
 
 Before implementing, modifying, installing, or executing anything, read this **entire prompt from beginning to end** and perform a **pre-execution review**.
 
-During this review, analyze both the prompt and the existing codebase, where applicable.
+
+Identify any:
+
+* Contradictory requirements
+* Inconsistent requirements
+* Ambiguous or underspecified requirements
+* Duplicate or overlapping requirements
+* Requirements that appear technically incompatible
+* Missing information required to implement the solution correctly
+* Assumptions you would otherwise need to make
 
 ---
 
