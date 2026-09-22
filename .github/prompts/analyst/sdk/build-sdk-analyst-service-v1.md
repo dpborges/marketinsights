@@ -151,7 +151,7 @@ If more that 10 symbols are passed to either method, raise an error "exceeded ma
 If an exception is raised by the underlying adapter, they should be captured in the errors property in the above JSON structure.
 
 **Implementation Details**
-Since the methods in the fmp_analyst.py provider only support a single symbol parameter, in this SDK implement the ability to accept multiple symbols and call the respective fmp_analyst adapter method for each symbol in parallel. Wait until all method calls are completed for each symbol, get the overall recommendation for each symbo, set the consensus.recommendation property and return response all at once using the JSON response provided in the Sample JSON response section above. If a call failed for one or two symbols , return the others and capture the error for the given symbols in the error property. 
+Since the methods in the fmp_analyst.py provider only support a single symbol parameter, in this SDK implement the ability to accept multiple symbols and call the respective fmp_analyst adapter method for each symbol in parallel. Wait until all method calls are completed for each symbol, get the overall recommendation for each symbol, set the consensus.recommendation property and return response all at once using the JSON response provided in the Sample JSON response section above. If a call failed for one or two symbols , return the others and capture the error for the given symbols in the error property. 
 
 
 **Testing**

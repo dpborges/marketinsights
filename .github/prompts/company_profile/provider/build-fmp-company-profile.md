@@ -40,7 +40,3 @@ After creating the required methods in the FMPCompany Adapter, create separate f
 
 ### Comments
 Add a comment on the top of the fmp_company_run.py file that provides the exact syntax for running the fmp_company_run.py validation code from Windows Powershell and syntax for also running it form gitbash command line.
-
-
-
-
