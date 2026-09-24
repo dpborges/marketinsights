@@ -2,7 +2,6 @@
 
 from typing import Any, Optional
 
-
 class SdkError(Exception):
     """Base exception for all SDK errors"""
 

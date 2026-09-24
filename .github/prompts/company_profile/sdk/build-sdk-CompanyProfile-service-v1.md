@@ -14,34 +14,31 @@ You are a Python SDK developer that has been asked to create a service that retu
 - Create a company service SDK in a separate file called company_service.py. 
 
 ### SDK Class to be created
-- **Create Class** CompanyService in **file** company.py file
+- **Create Class** CompanyService in **file** company_service.py file
 
 ### SDK Class Methods to be created
 - **Method:** get_profile() 
   - **Description** - calls the get_profile method in the SDK fmp_company.py file
   - **Inputs**: A stock symbol or list of stock symbols, upto 10 symbols maximum.
-  - **Response**: it will return the JSON from the get_profile method, as-is. 
+  - **Response**: it will modify the JSON from the get_profile method by assigning the array to the property "companies", and adding the error property at the end.
   
-- **Method:** get_current_summary() 
+- **Method:** get_summary() 
   - **Description** calls the get_profile method in the SDK fmp_company.py file and returns a subset of the fields listed in the output of the get_profile() method response. 
   - **Inputs**: A stock symbol or list of stock symbols, upto 10 symbols maximum.
-  - **Response**: the method will modify response from get_profile to return the following response JSON structure. 
+  - **Response**: the method will modify response from get_profile to return the  response JSON structure int the section 'Sample JSON response for get_summary()'.
   
 **Context:**
 - Architecture:       	docs/sdk-architecture.md
 - SDK Design:        	  docs/sdk-architecture.md
 - Exception Handling:	docs/exception-handling.md
 - SDK Services Directory  src/mi_sdk/services
+- SDK Test Directory    tests/sdk
 - FMP providers Directory  src/mi_sdk/providers/fmp
 - FMP company provider  fmp_company.py 
 
-**Constraints:**
+## Constraints:
 - Must follow .github/copilot-instructions.md
 - Must not expose provider-specific logic in the SDK service
-
-
-REVIEW FROM THIS POINT FORWARD FOR ACCURACY
-
 
 **Sample JSON response for get_summary()**
 ```json
@@ -61,16 +58,95 @@ REVIEW FROM THIS POINT FORWARD FOR ACCURACY
       "sector": "Technology",
       "industry": "Consumer Electronics",
     },
-    “errors”: [
-        <capture errors/exceptions here>
-    ]
-  ]
+  ],
+   "error": {
+      "code": "INVALID_QUERY_PARAMETER",
+      "message": "Missing required parameter",
+      "parameter": "symbol",
+      "allowedValues": "any publicly traded stock symbol"
+    }
+}
+```
+
+**Sample JSON response for get_profile()**
+```json
+{
+  "companies": [
+    {
+    "symbol": "NVDA",
+    "price": 228.87,
+    "marketCap": 5543460270000,
+    "beta": 2.217,
+    "lastDividend": 0.28,
+    "range": "164.27-236.54",
+    "change": 1.49,
+    "changePercentage": 0.65529,
+    "volume": 93296546,
+    "averageVolume": 141713674,
+    "companyName": "NVIDIA Corporation",
+    "currency": "USD",
+    "cik": "0001045810",
+    "isin": "US67066G1040",
+    "cusip": "67066G104",
+    "exchangeFullName": "NASDAQ Global Select",
+    "exchange": "NASDAQ",
+    "industry": "Semiconductors",
+    "website": "https://www.nvidia.com",
+    "description": "NVIDIA Corporation stands as a prominent provider of advanced graphics, computational, and networking solutions, operating across the United States, Taiwan, China, and numerous international markets",
+    "ceo": "Jensen Huang",
+    "sector": "Technology",
+    "country": "US",
+    "fullTimeEmployees": "42000",
+    "phone": "408 486 2000",
+    "address": "2788 San Tomas Expressway",
+    "city": "Santa Clara",
+    "state": "CA",
+    "zip": "95051",
+    "image": "https://images.financialmodelingprep.com/symbol/NVDA.png",
+    "ipoDate": "1999-01-22",
+    "defaultImage": false,
+    "isEtf": false,
+    "isActivelyTrading": true,
+    "isAdr": false,
+    "isFund": false
+    }
+  ],  
+  "error": {
+    "code": "INVALID_QUERY_PARAMETER",
+    "message": "Missing required parameter",
+    "parameter": "symbol",
+    "allowedValues": "any publicly traded stock symbol"
+  }
 }
 ```
 
 ## Implementation Details**
-Since the get_profile method in the fmp_company.py provider only supports a single symbol parameter, in this SDK implement the ability to accept multiple symbols and call the respective fmp_company adapter method for each symbol in parallel. Wait until all method calls are completed for each symbol, get the overall recommendation for each symbol, map the companyName to  name in the get_summary() JSON result and return response all at once using the JSON response provided in the Sample JSON response section above. If a call failed for one or two symbols , return the others and capture the error for the given symbols in the error property. 
+Since the get_profile method in the fmp_company.py provider only supports a single symbol parameter, in this SDK implement the ability to accept multiple symbols and call the respective fmp_company adapter method for each symbol in parallel. Wait until all method calls are completed for each symbol. Get the overall response for each symbol, map the companyName to  name in the get_summary() JSON result, and return all responses at once using the JSON response provided in the Sample JSON response section above, for get_profile(). If a call failed for one or two symbols , return the other symbols and capture the error for the given symbols in the error property. 
 
+## Implementation of the error object.
+
+L E F T   O F F  H  E  R  E 
+NEED TO COME UP WITH AN ERROR TABLE AND STANDARD WAY FOR HANDLING ERRORS.
+
+Create method that knows how to structure the error message. 
+Create a common 
+If the program captures and 
+For multiple failed symbols, it should provide a comma delimited list of symbols (as a string) that failed.
+
+"code": "INCOMPLETE RESPONSE",
+"message": "issued encounted with: AAPL, IBM, CSCO",
+"parameter": "",
+"allowedValues": ""
+
+
+If only one symbol failed, list symbol as a string.
+If there are no symbols provided in the parameter list, 
+the error properties should be set as
+"code": "INVALID_QUERY_PARAMETER",
+"message": "Missing required parameter",
+"parameter": "symbol",
+"allowedValues": "publicly traded stock symbol(s)"
+For successful responses the error property should be included as "error": {}
 
 # Usage
 section intentionlly left empty
@@ -78,21 +154,19 @@ section intentionlly left empty
 ## Business Logic
 section intentionlly left empty
 
-### Calculate Upside / Downside Percent
-section intentionlly left empty
+## Validation Logic
+If more than 10 symbols are passed to either method, raise an error "exceeded maximum of 10 symbols per request".
 
-**Validation Logic**
-If more that 10 symbols are passed to either method, raise an error "exceeded maximum of 10 symbols per request".
-
-**Exceptions**
+## Exceptions
 If an exception is raised by the underlying adapter, it should be captured in the errors property in the above JSON structure.
 
-**Testing**
+## Testing
 
 - Create a separate test file “test_company_service.py” in the SDK Test directory. 
 - Include two tests. 
-  - One to handle get_profile() for NVDA
-  - One to handle get_summary() for NVDA,META,AAPL,IBM
+  - One to handle get_profile() for NVDA, META
+  - One to handle get_summary() for NVDA,META,AAPL,IBM,AVGO
+  - One to handle get_summary() with not symbols provided
 - Add a docstring on top of the file with the syntax for running the test.
 
 

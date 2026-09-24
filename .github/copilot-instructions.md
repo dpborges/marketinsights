@@ -40,19 +40,9 @@
 - Use structured logging.
 - Is set up to integrate with PostgreSQL.
 
-
-
-
-
-
-
-
-
-
-
 ## Error handling
 
-- Use SDK exception hierarchy rather than ad hoc ValueError/RuntimeError
+- Use the exception management pattern described in .github/prompts/exception-management/exception-management.md
 - Do not leak provider-specific exceptions past the adapter layer
 
 ## Testing

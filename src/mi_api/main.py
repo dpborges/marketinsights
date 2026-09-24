@@ -13,9 +13,11 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from mi_api.config import APISettings, Environment
 from mi_api.dependencies import DatabaseManager
 from mi_api.errors import register_exception_handlers
+from mi_api.exception_handlers import market_data_error_handler
 from mi_api.middleware import RequestContextMiddleware
 from mi_api.observability import configure_logging, get_logger
 from mi_api.routers import build_api_router, health_router
+from mi_sdk.services.exceptions import MarketDataError
 
 
 def _lifespan(settings: APISettings) -> Any:
@@ -73,6 +75,7 @@ def create_app(settings: APISettings | None = None) -> FastAPI:
     application.include_router(health_router)
     application.include_router(build_api_router(), prefix=resolved_settings.api_v1_prefix)
     register_exception_handlers(application)
+    application.add_exception_handler(MarketDataError, market_data_error_handler)
 
     application.add_middleware(GZipMiddleware, minimum_size=1000)
     if resolved_settings.cors_allowed_origins:

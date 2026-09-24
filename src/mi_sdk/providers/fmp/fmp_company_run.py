@@ -13,8 +13,6 @@ from ...domain.exceptions import DataValidationError, SdkError, UnsupportedOpera
 from .fmp_company import FMPCompanyAdapter
 
 METHODS = {"get_profile": "Full company profile (raw provider JSON)"}
-
-
 async def _run(symbol: str) -> None:
     result = await FMPCompanyAdapter().get_profile(symbol)
     print(json.dumps(result, indent=2))
