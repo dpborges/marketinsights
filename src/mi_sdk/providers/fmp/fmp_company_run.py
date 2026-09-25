@@ -1,7 +1,8 @@
 """Interactive company profile validation; optionally pass get_profile AAPL."""
 # Run from the repository root in PowerShell:
 # $env:PYTHONPATH = 'src'; ./.venv/Scripts/python.exe -m mi_sdk.providers.fmp.fmp_company_run
-# Run from the repository root in using gitbash:
+# Append get_profile AAPL for a non-interactive request.
+# Run from the repository root using gitbash:
 # PYTHONPATH=src python -m mi_sdk.providers.fmp.fmp_company_run
 
 import asyncio
@@ -9,13 +10,15 @@ import json
 import sys
 from collections.abc import Sequence
 
-from ...domain.exceptions import DataValidationError, SdkError, UnsupportedOperationError
+from ..common.exceptions import ProviderError
 from .fmp_company import FMPCompanyAdapter
 
 METHODS = {"get_profile": "Full company profile (raw provider JSON)"}
+
+
 async def _run(symbol: str) -> None:
     result = await FMPCompanyAdapter().get_profile(symbol)
-    print(json.dumps(result, indent=2))
+    print(json.dumps({"data": result, "error": {}}, indent=2))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -28,15 +31,37 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(f"  {method}: {description}")
             args = [input("Method: ").strip()]
         if args[0] not in METHODS:
-            raise UnsupportedOperationError(f"Unknown method. Choose: {', '.join(METHODS)}")
+            raise ProviderError(
+                f"Unknown method. Choose: {', '.join(METHODS)}",
+                provider="FMP",
+                error_code="BAD_REQUEST",
+            )
         if len(args) == 1:
             args.append(input("Symbol (e.g. AAPL): ").strip())
         if len(args) != 2:
-            raise DataValidationError("Expected METHOD SYMBOL, e.g. get_profile AAPL")
+            raise ProviderError(
+                "Expected METHOD SYMBOL, e.g. get_profile AAPL",
+                provider="FMP",
+                error_code="BAD_REQUEST",
+            )
         asyncio.run(_run(args[1]))
         return 0
-    except SdkError as exc:
-        print(f"SDK Error: {type(exc).__name__}: {exc}")
+    except ProviderError as exc:
+        print(
+            json.dumps(
+                {
+                    "data": None,
+                    "error": {
+                        "message": exc.message,
+                        "provider": exc.provider,
+                        "error_code": exc.error_code,
+                        "status_code": exc.status_code,
+                        "retryable": exc.retryable,
+                    },
+                },
+                indent=2,
+            )
+        )
         return 1
     except (EOFError, KeyboardInterrupt):
         print("Input cancelled before the request completed.")

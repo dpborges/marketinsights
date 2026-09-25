@@ -150,7 +150,11 @@ async def market_data_error_handler(
         },
     )
 ```
+
+Behind the scenes, Starlette, the lower-level ASGI web framework, is doing much of the work necessary to turn that JSONResponse into an actual HTTP response.
+
 The mapping of error code to status code is done in following method
+
 ```python
 def map_error_to_http_status(error_code: str) -> int:
     return {
@@ -194,7 +198,7 @@ class CompanyService:
             ) from exc
 ```
 
-The REST layer only knows about SDK exceptions, which are MarketData errors, hence it would the following:
+The REST API layer only knows about SDK exceptions, which are MarketData errors, hence it would do the following:
 ```python
 from market_insights.sdk.exceptions import MarketDataError
 
@@ -209,6 +213,187 @@ async def market_data_error_handler(
 The REST layer should not import ProviderError, and the FMP provider should not import MarketDataError.
 
 ----
+
+### How to handle sparse errors in a multi-symbol request
+
+If you submit a multiple symbol request and 2 out of 10 fail, the error object should return an array with one error object for each symbol that failed and a summary property at the end. See example below
+
+```json
+{
+  "companies": [
+    {
+      "symbol": "NVDA",
+      "companyName": "NVIDIA Corporation",
+      "price": 185.42,
+      "sector": "Technology"
+    },
+    {
+      "symbol": "IBM",
+      "companyName": "International Business Machines",
+      "price": 281.10,
+      "sector": "Technology"
+    }
+  ],
+  "errors": [
+    {
+      "symbol": "BAD1",
+      "code": "SYMBOL_NOT_FOUND",
+      "message": "Symbol BAD1 was not found.",
+      "retryable": false
+    },
+    {
+      "symbol": "BAD2",
+      "code": "PROVIDER_TIMEOUT",
+      "message": "Unable to retrieve market data for BAD2.",
+      "retryable": true
+    }
+  ]
+}
+```
+
+To support this structure include a summary property. Below is an example summary report
+
+```json
+{
+  "companies": [
+    ...
+  ],
+  "errors": [
+    ...
+  ],
+  "summary": {
+    "requested": 10,
+    "successful": 8,
+    "failed": 2
+  }
+}
+```
+All three properties: companies, errors, and summary should be included  all responses.
+
+Below is an example of a fully successful request.
+
+```json
+{
+  "companies": [
+    {"symbol": "NVDA", "companyName": "NVIDIA Corporation"},
+    {"symbol": "IBM", "companyName": "International Business Machines"}
+  ],
+  "errors": [],
+  "summary": {
+    "requested": 2,
+    "successful": 2,
+    "failed": 0
+  }
+}
+```
+
+**This is basic rule for populating error object**
+- companies contains only successful results.
+- errors contains one entry per failed symbol.
+- successful + failed = requested.
+- If every symbol fails, return companies: [] with the errors and summary populated.
+
+**This is basic rule for handling duplicate symbols**
+Define how duplicate symbols are handled so the counts remain predictable. I’d deduplicate before processing and count the unique symbols requested.
+
+---
+
+### Implementation recommendation for SDK service
+
+For the MI architecture, the SDK batch service should assemble this response, catching each provider failure and translating it into a per-symbol error. The individual provider call can continue raising ProviderError. Reserve the singular top-level error construct for failures that prevent the entire batch from being processed, such as an invalid request format.
+
+Create a **reusable batch-result handler**, with a small exception-to-error conversion function. This separates two responsibilities:
+- Error conversion: Translate a ProviderError into a consistent per-symbol error containing symbol, code, message, and retryable.
+- Batch policy: Decide what to return when some or all symbols fail, preserve successful results, and calculate summary.
+Each SDK service could use the same handler while supplying its own respective data (eg. earnings, analyst targets, etc).
+The **reusable batch-result handler** can reside in src/mi_sdk/services/batch-result-handler.py.
+
+Use following as the default policy
+| Situation | SDK Behavior | REST Behavior | HTTP |
+|---|---|---|---:|
+| 10 requested, 10 successful | Return normal result | Return response | 200 |
+| 10 requested, 8 successful, 2 item failures | Return results + `errors[]` | Return response | 200 |
+| 10 requested, 0 successful because all symbols invalid | Return `errors[]` containing 10 item errors | Return response | 200 |
+| FMP completely unavailable | Raise `MarketDataError` | Exception handler | 503 |
+| FMP times out for entire operation | Raise `MarketDataError` | Exception handler | 504 |
+| Invalid MI REST request | Doesn't reach SDK | REST validation | 400/422 |
+| MI authentication fails | Doesn't reach SDK | REST authentication | 401 |
+
+Keep this shared logic in the SDK layer. Providers raise ProviderError; the SDK translates and aggregates them; the API handles HTTP responses.
+
+The Mechanism column in table above is meant to convery how the condition is communicated back to the REST API layer.
+
+Provider failures that prevent the SDK operation from producing a usable result should be translated into MarketDataError. Individual item failures in a batch operation can be captured as result data rather than raised as exceptions.
+
+For example, suppose the SDK method is:
+```python
+result = company_service.get_summaries(
+    ["NVDA", "IBM", "MSFT", "BAD1", "AAPL"]
+)
+```
+If BAD1 doesn't exist, the SDK can internally encounter a ProviderError, but instead of allowing that one symbol to terminate processing of all five symbols, it catches it:
+```python
+for symbol in symbols:
+    try:
+        company = provider.get_company_summary(symbol)
+        companies.append(company)
+
+    except ProviderError as exc:
+        errors.append(
+            ItemError(
+                symbol=symbol,
+                code=exc.error_code,
+                message=exc.message,
+                retryable=exc.retryable,
+            )
+        )
+```
+
+Then the SDK returns:
+```python
+CompanySummaryResult(
+    companies=companies,
+    errors=errors
+)
+```
+
+No MarketDataError escapes the SDK because the SDK successfully completed the batch operation, albeit with partial results.
+
+By contrast, suppose FMP itself is unavailable:
+
+FMP → 503
+
+and therefore the SDK cannot reasonably process the batch. Then:
+
+```python
+except ProviderUnavailableError as exc:
+    raise MarketDataError(
+        message="Market data provider is unavailable",
+        error_code="PROVIDER_UNAVAILABLE",
+        provider=exc.provider,
+        provider_status_code=exc.status_code,
+        retryable=True,
+    ) from exc
+```
+That propagates:
+
+FMP 503
+   ↓
+ProviderError
+   ↓
+MarketDataError
+   ↓
+REST exception handler
+   ↓
+HTTP 503
+
+### One final note
+If every symbol fails with an item-level error, return companies: [] with populated errors and summary. Operation-wide failures follow the policy table provided above.
+
+For implementation, a single symbol’s timeout or HTTP 503 should remain an item error when other symbols succeed. It should not, by itself, classify the entire operation as unavailable.
+
+
+---
 
 ### How to extend Exception Hierarchy for Provider specific errors in the future, as needed.
 

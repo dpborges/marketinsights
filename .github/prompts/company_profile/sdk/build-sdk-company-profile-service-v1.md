@@ -1,10 +1,10 @@
-Build RiskRewardProfile SDK service
+Build Company SDK service
 
 ## Preamble
 
 Before moving forward stop here and read the **pre-execution review** document located in this file: 
 ```code
-.github/prompts/prompt_templates/pre-execution-basic-review.md 
+.github/prompts/_prompt_templates/pre-execution-basic-review.md 
 ```
 and then we can proceed with the prompt below as directed. 
 
@@ -25,12 +25,12 @@ You are a Python SDK developer that has been asked to create a service that retu
 - **Method:** get_summary() 
   - **Description** calls the get_profile method in the SDK fmp_company.py file and returns a subset of the fields listed in the output of the get_profile() method response. 
   - **Inputs**: A stock symbol or list of stock symbols, upto 10 symbols maximum.
-  - **Response**: the method will modify response from get_profile to return the  response JSON structure int the section 'Sample JSON response for get_summary()'.
+  - **Response**: the method will modify the JSON response from get_profile to align with the sample JSON provided in the section 'Sample JSON response for get_summary()'.
   
 **Context:**
-- Architecture:       	docs/sdk-architecture.md
-- SDK Design:        	  docs/sdk-architecture.md
-- Exception Handling:	docs/exception-handling.md
+- Architecture:       	.github/copilot-instructions.md
+- SDK Design:        	  .github/copilot-instructions.md
+- Exception Handling:	 .github/prompts/exception_management/exception_management.md
 - SDK Services Directory  src/mi_sdk/services
 - SDK Test Directory    tests/sdk
 - FMP providers Directory  src/mi_sdk/providers/fmp
@@ -59,12 +59,14 @@ You are a Python SDK developer that has been asked to create a service that retu
       "industry": "Consumer Electronics",
     },
   ],
-   "error": {
-      "code": "INVALID_QUERY_PARAMETER",
-      "message": "Missing required parameter",
-      "parameter": "symbol",
-      "allowedValues": "any publicly traded stock symbol"
-    }
+   "errors": [
+    ...
+  ],
+  "summary": {
+    "requested": 1,
+    "successful": 1,
+    "failed": 0
+  }
 }
 ```
 
@@ -111,42 +113,20 @@ You are a Python SDK developer that has been asked to create a service that retu
     "isFund": false
     }
   ],  
-  "error": {
-    "code": "INVALID_QUERY_PARAMETER",
-    "message": "Missing required parameter",
-    "parameter": "symbol",
-    "allowedValues": "any publicly traded stock symbol"
+  "errors": [
+    ...
+  ],
+  "summary": {
+    "requested": 1,
+    "successful": 1,
+    "failed": 0
   }
 }
 ```
 
 ## Implementation Details**
-Since the get_profile method in the fmp_company.py provider only supports a single symbol parameter, in this SDK implement the ability to accept multiple symbols and call the respective fmp_company adapter method for each symbol in parallel. Wait until all method calls are completed for each symbol. Get the overall response for each symbol, map the companyName to  name in the get_summary() JSON result, and return all responses at once using the JSON response provided in the Sample JSON response section above, for get_profile(). If a call failed for one or two symbols , return the other symbols and capture the error for the given symbols in the error property. 
+Since the get_profile method in the fmp_company.py provider only supports a single symbol parameter, in this SDK implement the ability to accept multiple symbols and call the respective fmp_company adapter method for each symbol in parallel. Wait until all method calls are completed for each symbol. Get the overall response for each symbol, map the companyName to  name in the get_summary() JSON result, and return all responses at once using the JSON response provided in the Sample JSON response section above, for get_profile(). If a call failed for one or two symbols, refer to the section in this document called "Exceptions".
 
-## Implementation of the error object.
-
-L E F T   O F F  H  E  R  E 
-NEED TO COME UP WITH AN ERROR TABLE AND STANDARD WAY FOR HANDLING ERRORS.
-
-Create method that knows how to structure the error message. 
-Create a common 
-If the program captures and 
-For multiple failed symbols, it should provide a comma delimited list of symbols (as a string) that failed.
-
-"code": "INCOMPLETE RESPONSE",
-"message": "issued encounted with: AAPL, IBM, CSCO",
-"parameter": "",
-"allowedValues": ""
-
-
-If only one symbol failed, list symbol as a string.
-If there are no symbols provided in the parameter list, 
-the error properties should be set as
-"code": "INVALID_QUERY_PARAMETER",
-"message": "Missing required parameter",
-"parameter": "symbol",
-"allowedValues": "publicly traded stock symbol(s)"
-For successful responses the error property should be included as "error": {}
 
 # Usage
 section intentionlly left empty
@@ -158,15 +138,19 @@ section intentionlly left empty
 If more than 10 symbols are passed to either method, raise an error "exceeded maximum of 10 symbols per request".
 
 ## Exceptions
-If an exception is raised by the underlying adapter, it should be captured in the errors property in the above JSON structure.
+Have the Company SDK employ the Exception handling pattern for SDK services, that is documented in file 
+```code .github/prompts/exception_management/exception_management.md.```
 
 ## Testing
 
 - Create a separate test file “test_company_service.py” in the SDK Test directory. 
-- Include two tests. 
+- Include six tests. 
+  - One to handle get_profile() for IBM
   - One to handle get_profile() for NVDA, META
+  - One to handle get_profile() with no symbols provided
+  - One to handle get_summary() for IBM
   - One to handle get_summary() for NVDA,META,AAPL,IBM,AVGO
-  - One to handle get_summary() with not symbols provided
+  - One to handle get_summary() with no symbols provided
 - Add a docstring on top of the file with the syntax for running the test.
 
 

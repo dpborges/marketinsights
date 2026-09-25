@@ -17,6 +17,8 @@ from .domain import (
 )
 from .factory import ServiceFactory
 from .interfaces import SectorPerformanceService
+from .services.company_service import CompanyService
+from .services.exceptions import MarketDataError
 from .services.sector_leadership_service import SectorLeadershipService
 
 __all__ = [
@@ -28,6 +30,7 @@ __all__ = [
     "SectorPerformanceResponse",
     # Exceptions
     "SdkError",
+    "MarketDataError",
     "ConfigurationError",
     "AuthenticationError",
     "AuthorizationError",
@@ -37,6 +40,7 @@ __all__ = [
     "SymbolNotFoundError",
     "UnsupportedOperationError",
     # Services
+    "CompanyService",
     "SectorPerformanceService",
     "SectorLeadershipService",
     # Factory

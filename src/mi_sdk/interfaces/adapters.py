@@ -27,6 +27,7 @@ class SectorPerformanceAdapter(Protocol):
         """Fetch sector performance data from the provider"""
         ...
 
+
 class HistoricalPricingAdapter(Protocol):
     """Async historical pricing boundary used by sector summaries."""
 
@@ -34,4 +35,12 @@ class HistoricalPricingAdapter(Protocol):
         self, symbols: Sequence[str], as_of_date: str, lookback_periods: int
     ) -> dict[str, Any]:
         """Return adjusted current and lookback prices plus per-symbol errors."""
+        ...
+
+
+class CompanyAdapter(Protocol):
+    """Async company boundary returning an array with one full profile, or no match."""
+
+    async def get_profile(self, symbol: str) -> Any:
+        """Return raw profile fields, including symbol and companyName."""
         ...
