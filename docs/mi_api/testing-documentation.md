@@ -42,3 +42,50 @@ more than ten symbols return HTTP 400 with `10 symbol request limit exceeded`.
 Fatal SDK failures use the application's centralized error handling.
 
 For the broader API testing guide, see [api-testing-documentation.md](api-testing-documentation.md).
+
+
+# Company API testing
+
+Run the mocked company API harness from the repository root:
+
+```powershell
+.venv/Scripts/python.exe -m pytest tests/api/test_company.py --no-cov -v
+```
+
+Git Bash with the project environment activated:
+
+```bash
+python -m pytest tests/api/test_company.py --no-cov -v
+```
+
+No provider key, network, database, or Redis is needed. Tests cover both routes,
+full profile field preservation, summary fields, single/multiple symbols,
+normalization and deduplication, the ten-unique-symbol limit, validation before
+service construction, partial/all item failures, SDK error status mapping,
+response validation, dependency wiring, and OpenAPI registration.
+
+Start the application using the uvicorn command above. With docs enabled, open
+http://localhost:8000/docs and expand **company**, or run:
+
+```powershell
+curl.exe "http://localhost:8000/api/v1/company/profile?symbols=META"
+curl.exe "http://localhost:8000/api/v1/company/profile?symbols=META,MSFT"
+curl.exe "http://localhost:8000/api/v1/company/summary?symbols=META"
+curl.exe "http://localhost:8000/api/v1/company/summary?symbols=AAPL,META"
+```
+
+Manual calls require `MARKET_FMP_API_KEY`. Both endpoints return the SDK's
+`companies`, `errors`, and `summary` unchanged. Profile retains all company
+fields; summary contains `symbol`, `name`, `price`, `sector`, and `industry`.
+Symbols are trimmed, uppercased, and deduplicated before enforcing the limit.
+Missing or blank symbols return HTTP 400 with `No symbols provided`. More than
+ten unique symbols return HTTP 400 with `10 symbol request limit exceeded`.
+Empty entries or embedded whitespace are also rejected with HTTP 400.
+Item failures, including all symbols not found, return HTTP 200 with item errors.
+Operation-wide unavailability and timeouts use the central SDK exception handler
+and return HTTP 503 and 504 respectively with a singular `error` object.
+
+Company API validation errors explicitly include `retryable: false`. Under the
+default REST policy, operation-wide provider outages (503) and timeouts (504)
+also return `retryable: false`, overriding upstream retry hints. Per-symbol
+errors retain their SDK retryability.

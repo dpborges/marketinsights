@@ -309,15 +309,15 @@ Each SDK service could use the same handler while supplying its own respective d
 The **reusable batch-result handler** can reside in src/mi_sdk/services/batch-result-handler.py.
 
 Use following as the default policy
-| Situation | SDK Behavior | REST Behavior | HTTP |
-|---|---|---|---:|
-| 10 requested, 10 successful | Return normal result | Return response | 200 |
-| 10 requested, 8 successful, 2 item failures | Return results + `errors[]` | Return response | 200 |
-| 10 requested, 0 successful because all symbols invalid | Return `errors[]` containing 10 item errors | Return response | 200 |
-| FMP completely unavailable | Raise `MarketDataError` | Exception handler | 503 |
-| FMP times out for entire operation | Raise `MarketDataError` | Exception handler | 504 |
-| Invalid MI REST request | Doesn't reach SDK | REST validation | 400/422 |
-| MI authentication fails | Doesn't reach SDK | REST authentication | 401 |
+| Situation | SDK Behavior | REST Behavior | HTTP | Retryable |
+|---|---|---|---|---:|
+| 10 requested, 10 successful | Return normal result | Return response | 200 | true |
+| 10 requested, 8 successful, 2 item failures | Return results + `errors[]` | Return response | 200 |  true |
+| 10 requested, 0 successful because all symbols invalid | Return `errors[]` containing 10 item errors | Return response | 200 | false |
+| FMP completely unavailable | Raise `MarketDataError` | Exception handler | 503 | false |
+| FMP times out for entire operation | Raise `MarketDataError` | Exception handler | 504 | false |
+| Invalid MI REST request | Doesn't reach SDK | REST validation | 400/422 | false |
+| MI authentication fails | Doesn't reach SDK | REST authentication | 401 | false |
 
 Keep this shared logic in the SDK layer. Providers raise ProviderError; the SDK translates and aggregates them; the API handles HTTP responses.
 

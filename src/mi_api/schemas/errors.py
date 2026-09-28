@@ -21,6 +21,7 @@ class ErrorBody(BaseModel):
     code: str
     message: str
     request_id: str = Field(alias="requestId")
+    retryable: bool = False
     parameter: str | None = None
     allowed_values: list[str] | None = Field(default=None, alias="allowedValues")
     details: list[ErrorDetail | dict[str, Any]] = Field(default_factory=list)
