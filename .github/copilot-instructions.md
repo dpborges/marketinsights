@@ -51,4 +51,5 @@
 
 ## FMP Adapter manual testing and validation
 
-- For manual testing for newly created adapter service, look for a directive in the prompt of the specific FMP Adapter service itself. The fmp_adapter_run.py should be updated to be able to test the service manually.
+- For manual testing for newly created or updated adapter, look for a directive in the prompt of the specific FMP Adapter service itself. The fmp\_<adapter_name>\_run.py should be updated to be able to test the service manually, where the user can run the file from the command line and be prompted for the service to run and the parameters to pass to it. The output should be printed to standard output.
+created 

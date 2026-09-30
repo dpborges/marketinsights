@@ -1,5 +1,7 @@
-"""Internal asynchronous adapter for FMP company profiles."""
+"""Internal asynchronous adapter for FMP company data."""
 
+import re
+from datetime import date
 from typing import Any
 
 import httpx
@@ -15,7 +17,7 @@ class _CompanySettings(BaseSettings):
 
 
 class FMPCompanyAdapter:
-    """Retrieve raw company profile JSON without mapping provider fields."""
+    """Retrieve raw company JSON without mapping provider fields."""
 
     def __init__(self, api_key: str | None = None, timeout: float = 30.0) -> None:
         self._api_key = api_key if api_key is not None else _CompanySettings().api_key
@@ -30,7 +32,45 @@ class FMPCompanyAdapter:
 
     async def get_profile(self, symbol: str) -> Any:
         """Return the provider JSON unchanged for one stock symbol, e.g. AAPL."""
-        # This service return a full company profile
+        return await self._request("profile", {"symbol": self._validate_symbol(symbol)})
+
+    async def get_historical_pricing(
+        self, symbol: str, from_date: str | None = None, to_date: str | None = None
+    ) -> Any:
+        """Return raw daily pricing; both dates are required in YYYY-MM-DD format.
+
+        Omitted dates raise ProviderError, just like other invalid request inputs.
+        """
+        symbol = self._validate_symbol(symbol)
+        for value in (from_date, to_date):
+            if not isinstance(value, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value):
+                raise ProviderError(
+                    "Provide both from_date and to_date in YYYY-MM-DD format.",
+                    provider="FMP",
+                    error_code="BAD_REQUEST",
+                )
+            try:
+                date.fromisoformat(value)
+            except ValueError:
+                raise ProviderError(
+                    "from_date and to_date must be real calendar dates.",
+                    provider="FMP",
+                    error_code="BAD_REQUEST",
+                ) from None
+        assert from_date is not None and to_date is not None
+        if from_date > to_date:
+            raise ProviderError(
+                "from_date must be on or before to_date.",
+                provider="FMP",
+                error_code="BAD_REQUEST",
+            )
+        return await self._request(
+            "historical-price-eod/full",
+            {"symbol": symbol, "from": from_date, "to": to_date},
+        )
+
+    @staticmethod
+    def _validate_symbol(symbol: str) -> str:
         if not isinstance(symbol, str) or not symbol.strip():
             raise ProviderError(
                 "Provide one non-empty stock symbol as a string.",
@@ -46,10 +86,14 @@ class FMPCompanyAdapter:
                 error_code="BAD_REQUEST",
                 retryable=False,
             )
+        return symbol
+
+    async def _request(self, endpoint: str, params: dict[str, str]) -> Any:
+        """Apply shared transport and error handling to company endpoints."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(
-                    f"{self.base_url}/profile", params={"symbol": symbol, "apikey": self._api_key}
+                    f"{self.base_url}/{endpoint}", params={**params, "apikey": self._api_key}
                 )
                 response.raise_for_status()
         except httpx.HTTPStatusError as exc:
@@ -59,7 +103,7 @@ class FMPCompanyAdapter:
                 401: ("INVALID_API_KEY", "Company provider authentication failed."),
                 402: ("FORBIDDEN_PLAN_LIMIT", "Company data access is not authorized."),
                 403: ("FORBIDDEN_PLAN_LIMIT", "Company data access is not authorized."),
-                404: ("SYMBOL_NOT_FOUND", "Company profile was not found."),
+                404: ("SYMBOL_NOT_FOUND", "Company data was not found."),
                 429: ("RATE_LIMIT_EXCEEDED", "Company provider rate limit exceeded."),
             }.get(
                 status,
