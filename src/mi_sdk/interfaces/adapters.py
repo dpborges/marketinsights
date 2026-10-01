@@ -44,3 +44,7 @@ class CompanyAdapter(Protocol):
     async def get_profile(self, symbol: str) -> Any:
         """Return raw profile fields, including symbol and companyName."""
         ...
+
+    async def get_historical_pricing(self, symbol: str, from_date: str, to_date: str) -> Any:
+        """Return daily price records as an array or a data-wrapped array."""
+        ...

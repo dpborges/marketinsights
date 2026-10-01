@@ -14,7 +14,7 @@ and then we can proceed with the prompt below as directed.
 ### Adapter Class Method to be created
 - **Method:** get_historical_pricing() 
 - **Description** - calls FMP API to get a company's historical pricing 
-- **Inputs**: A stock symbol,from_date, to_date
+- **Inputs**: A stock symbol, from_date, to_date 
 - **Response**: returns the FMP API JSON structure as-is for the given symbol
   
   

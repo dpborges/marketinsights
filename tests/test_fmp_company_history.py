@@ -1,4 +1,10 @@
-"""Historical pricing request validation and interactive runner coverage."""
+"""Historical pricing request validation and interactive runner coverage.
+   gitbash command line syntax: 
+   .venv/Scripts/python.exe -m pytest tests/test_fmp_company_history.py
+"""
+
+# Run from the repository root in Git Bash:
+# .venv/Scripts/python.exe -m pytest tests/test_fmp_company_history.py
 
 import json
 from typing import Any

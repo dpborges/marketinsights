@@ -1,6 +1,7 @@
 """Run: .venv/Scripts/python.exe -m pytest tests/sdk/test_company_service.py"""
 
 import asyncio
+from datetime import date
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -12,6 +13,136 @@ from mi_sdk.interfaces.adapters import CompanyAdapter
 from mi_sdk.providers.common.exceptions import ProviderError
 from mi_sdk.providers.fmp.fmp_company import FMPCompanyAdapter
 from mi_sdk.services.batch_result_handler import collect_batch
+
+
+async def test_historical_pricing_ibm_month(adapter: AsyncMock, monkeypatch: Any) -> None:
+    class Today(date):
+        @classmethod
+        def today(cls) -> "Today":
+            return cls(2026, 9, 30)
+
+    monkeypatch.setattr("mi_sdk.services.company_service.date", Today)
+    rows = [{"symbol": "IBM", "date": "2026-09-30", "close": 250.0}]
+    adapter.get_historical_pricing.return_value = rows
+    result = await CompanyService(adapter).get_historical_pricing("IBM", lookback_period="1M")
+    adapter.get_historical_pricing.assert_awaited_once_with("IBM", "2026-08-30", "2026-09-30")
+    assert result == {"requestedTradingDays": 1, "priceData": rows, "errors": []}
+
+
+async def test_historical_pricing_csco_dates(adapter: AsyncMock) -> None:
+    rows = [
+        {"symbol": "CSCO", "date": "2026-09-30", "close": 70.0, "volume": 100},
+        {"symbol": "CSCO", "date": "2026-09-29", "close": 69.0, "volume": 200},
+    ]
+    adapter.get_historical_pricing.return_value = {"data": rows}
+    result = await CompanyService(adapter).get_historical_pricing(
+        "CSCO", from_date="2026-08-30", to_date="2026-09-30"
+    )
+    adapter.get_historical_pricing.assert_awaited_once_with("CSCO", "2026-08-30", "2026-09-30")
+    assert result == {"requestedTradingDays": 2, "priceData": rows, "errors": []}
+
+
+@pytest.mark.parametrize(
+    "period,expected",
+    [
+        ("1D", "2026-09-30"),
+        ("2D", "2026-09-29"),
+        ("3D", "2026-09-28"),
+        ("4D", "2026-09-27"),
+        ("5D", "2026-09-26"),
+        ("1W", "2026-09-23"),
+        ("2W", "2026-09-16"),
+        ("1M", "2026-08-30"),
+        ("3M", "2026-06-30"),
+        ("6M", "2026-03-30"),
+        ("9M", "2025-12-30"),
+        ("12M", "2025-09-30"),
+        ("18M", "2025-03-30"),
+        ("1Y", "2025-09-30"),
+        ("2Y", "2024-09-30"),
+        ("3Y", "2023-09-30"),
+        ("4Y", "2022-09-30"),
+        ("5Y", "2021-09-30"),
+    ],
+)
+def test_historical_period_dates(period: str, expected: str) -> None:
+    assert (
+        CompanyService.convert_period_code_to_from_date(period, as_of_date=date(2026, 9, 30))
+        == expected
+    )
+
+
+@pytest.mark.parametrize(
+    "anchor,period,expected",
+    [
+        (date(2026, 3, 31), "1M", "2026-02-28"),
+        (date(2024, 3, 31), "1M", "2024-02-29"),
+        (date(2024, 2, 29), "1Y", "2023-02-28"),
+    ],
+)
+def test_historical_period_month_end(anchor: date, period: str, expected: str) -> None:
+    assert CompanyService.convert_period_code_to_from_date(period, as_of_date=anchor) == expected
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        {"from_date": "2026-09-01"},
+        {"to_date": "2026-09-30"},
+        {"lookback_period": "7D"},
+        {"lookback_period": ""},
+        {"lookback_period": 1},
+        {"lookback_period": "1M", "from_date": "2026-09-01"},
+        {"lookback_period": "1M", "to_date": "2026-09-30"},
+        {"from_date": "2026-02-30", "to_date": "2026-09-30"},
+        {"from_date": "2026-9-01", "to_date": "2026-09-30"},
+        {"from_date": "2026-10-01", "to_date": "2026-09-30"},
+    ],
+)
+async def test_historical_invalid_dates(adapter: AsyncMock, kwargs: dict[str, Any]) -> None:
+    with pytest.raises(MarketDataError) as caught:
+        await CompanyService(adapter).get_historical_pricing("IBM", **kwargs)
+    assert caught.value.error_code == "BAD_REQUEST"
+    adapter.get_historical_pricing.assert_not_awaited()
+
+
+@pytest.mark.parametrize("symbol", [None, "", "IBM,CSCO", ["IBM"], "I BM"])
+async def test_historical_invalid_symbol(adapter: AsyncMock, symbol: Any) -> None:
+    with pytest.raises(MarketDataError) as caught:
+        await CompanyService(adapter).get_historical_pricing(symbol, lookback_period="1M")
+    assert caught.value.error_code == "BAD_REQUEST"
+    adapter.get_historical_pricing.assert_not_awaited()
+
+
+async def test_historical_provider_failure(adapter: AsyncMock) -> None:
+    error = ProviderError("Timed out", "FMP", "PROVIDER_TIMEOUT", 504, True)
+    adapter.get_historical_pricing.side_effect = error
+    with pytest.raises(MarketDataError) as caught:
+        await CompanyService(adapter).get_historical_pricing("IBM", lookback_period="1M")
+    assert caught.value.error_code == error.error_code
+    assert caught.value.provider == error.provider
+    assert caught.value.provider_status_code == 504
+    assert caught.value.retryable is True
+    assert caught.value.__cause__ is error
+
+
+@pytest.mark.parametrize("payload", [[], {"data": []}])
+async def test_historical_empty_prices(adapter: AsyncMock, payload: Any) -> None:
+    adapter.get_historical_pricing.return_value = payload
+    assert await CompanyService(adapter).get_historical_pricing("IBM", lookback_period="1D") == {
+        "requestedTradingDays": 0,
+        "priceData": [],
+        "errors": [],
+    }
+
+
+@pytest.mark.parametrize("payload", [None, {}, {"data": None}, [1]])
+async def test_historical_invalid_response(adapter: AsyncMock, payload: Any) -> None:
+    adapter.get_historical_pricing.return_value = payload
+    with pytest.raises(MarketDataError) as caught:
+        await CompanyService(adapter).get_historical_pricing("IBM", lookback_period="1M")
+    assert caught.value.error_code == "PROVIDER_ERROR"
 
 
 def profile(symbol: str) -> dict[str, Any]:
