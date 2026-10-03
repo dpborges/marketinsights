@@ -1,6 +1,7 @@
 """Service factory for dependency injection"""
 
 from .config.settings import SDKSettings
+from .config.stop_loss_settings import StopLossSettings
 from .domain.exceptions import ConfigurationError
 from .interfaces.sector_performance_service import SectorPerformanceService
 from .providers.common.exceptions import ProviderError
@@ -9,6 +10,7 @@ from .providers.fmp.fmp_analyst import FMPAnalystAdapter
 from .providers.fmp.fmp_company import FMPCompanyAdapter
 from .services.analyst_service import AnalystService
 from .services.batch_result_handler import translate_provider_error
+from .services.calculation_service import CalculationService
 from .services.company_service import CompanyService
 from .services.exceptions import MarketDataError
 from .services.sector_leadership_service import SectorLeadershipService
@@ -65,6 +67,13 @@ class ServiceFactory:
         except ProviderError as exc:
             raise translate_provider_error(exc) from exc
         return CompanyService(adapter)
+
+    def create_calculation_service(
+        self,
+        settings: StopLossSettings | None = None,
+    ) -> CalculationService:
+        """Create stop-loss calculations backed by the company SDK."""
+        return CalculationService(self.create_company_service(), settings)
 
     def _build_adapter(self) -> FMPAdapter:
         if self.settings.provider.lower() == "fmp":

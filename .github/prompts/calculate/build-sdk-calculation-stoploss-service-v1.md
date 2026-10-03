@@ -10,20 +10,17 @@ and then we can proceed with the prompt below as directed.
 
 ## Role and Objective
 
-You are a Python SDK developer that has been asked to implement a stop-loss capability as a deterministic, horizon-aware quantitative service using OHLCV data. YThe OHLCV will be provided returns a  company's historical prices data using the get_historical_pricing method in the fmp-company.py provider.
-
-- Add a get_historical_pricing method to the existing SDK file called company_service.py. 
+You are a Python SDK developer that has been asked to implement a stop-loss capability as a deterministic, horizon-aware quantitative service using OHLCV data. The OHLCV data will be returned from company's get_historical_pricing method in the fmp-company.py provider.
 
 ### SDK Class to be created
-- **Create Class** CalculationService in **file** calculate_service.py file
+- **Create Class** CalculationService in **file** calculation_service.py file
 
 ### SDK Class Methods to be created
 - **Method:** get_stop_loss() 
-  - **Description** - returns daily prices data for a particular date range.
-  - **Inputs**: stock symbol, horizon
-  - **Response**: returns the JSON structure found in the section "Sample JSON response for get_stop_loss()" within this prompt.
-  
- 
+  - **Description** - calculates stop loss for a company based on SHORT, MEDIUM, and LONG term horizons
+  - **Inputs**: list of stock symbols (up to 10), list of horizons
+  - **Response**: returns stopLoss result using the JSON structure found in the section "Sample JSON response for get_stop_loss()".
+   
 **Context:**
 - Architecture:       	.github/copilot-instructions.md
 - SDK Design:        	  .github/copilot-instructions.md
@@ -32,50 +29,150 @@ You are a Python SDK developer that has been asked to implement a stop-loss capa
 - SDK Test Directory    tests/sdk
 - FMP providers Directory  src/mi_sdk/providers/fmp
 
-
 ## Constraints:
 - Must follow .github/copilot-instructions.md
 - Must not expose provider-specific logic in the SDK service
 
-## Response(s):
+## Response:
 
 **Sample JSON response for get_stop_loss()**
+
+Ignore data values as this is mock data. 
+
 ```json
 {
-  "symbol": "NVDA",
-  "horizon": "SHORT",
-  "currentPrice": 200.00,
-
-  "stopLoss": {
-    "price": 185.00,
-    "downsidePct": 7.50,
-    "method": "SUPPORT_ATR"
+  "companies": [
+  {
+    "symbol": "NVDA",
+    "currentPrice": 200.00,
+    "horizons": {
+      "SHORT": {
+        "stopLoss": {
+          "price": 185.00,
+          "downsidePct": 7.50,
+          "method": "SUPPORT_ATR"
+        },
+        "support": {
+          "price": 188.00,
+          "strength": 0.84,
+          "touches": 3
+        },
+        "volatility": {
+          "atr": 6.00,
+          "atrPeriod": 14,
+          "atrTimeframe": "DAILY",
+          "bufferMultiplier": 0.50
+        }
+      },
+      "MEDIUM": {
+        "stopLoss": {
+          "price": 172.00,
+          "downsidePct": 14.00,
+          "method": "SUPPORT_ATR"
+        },
+        "support": {
+          "price": 176.00,
+          "strength": 0.79,
+          "touches": 4
+        },
+        "volatility": {
+          "atr": 5.33,
+          "atrPeriod": 20,
+          "atrTimeframe": "DAILY",
+          "bufferMultiplier": 0.75
+        }
+      },
+      "LONG": {
+        "stopLoss": {
+          "price": 155.00,
+          "downsidePct": 22.50,
+          "method": "SUPPORT_ATR"
+        },
+        "support": {
+          "price": 162.00,
+          "strength": 0.88,
+          "touches": 3
+        },
+        "volatility": {
+          "atr": 7.00,
+          "atrPeriod": 14,
+          "atrTimeframe": "WEEKLY",
+          "bufferMultiplier": 1.00
+        }
+      }
+    }
   },
-
-  "support": {
-    "price": 188.00,
-    "strength": 0.84,
-    "touches": 3
+  {
+    "symbol": "AAPL",
+    "currentPrice": 181.00,
+    "horizons": {
+      "SHORT": {
+        "stopLoss": {
+          "price": 178.00,
+          "downsidePct": 7.50,
+          "method": "SUPPORT_ATR"
+        },
+        "support": {
+          "price": 180.00,
+          "strength": 0.84,
+          "touches": 3
+        },
+        "volatility": {
+          "atr": 6.00,
+          "atrPeriod": 14,
+          "atrTimeframe": "DAILY",
+          "bufferMultiplier": 0.50
+        }
+      },
+      "MEDIUM": {
+        "stopLoss": {
+          "price": 172.00,
+          "downsidePct": 14.00,
+          "method": "SUPPORT_ATR"
+        },
+        "support": {
+          "price": 176.00,
+          "strength": 0.79,
+          "touches": 4
+        },
+        "volatility": {
+          "atr": 5.33,
+          "atrPeriod": 20,
+          "atrTimeframe": "DAILY",
+          "bufferMultiplier": 0.75
+        }
+      },
+      "LONG": {
+        "stopLoss": {
+          "price": 155.00,
+          "downsidePct": 22.50,
+          "method": "SUPPORT_ATR"
+        },
+        "support": {
+          "price": 162.00,
+          "strength": 0.88,
+          "touches": 3
+        },
+        "volatility": {
+          "atr": 7.00,
+          "atrPeriod": 14,
+          "atrTimeframe": "WEEKLY",
+          "bufferMultiplier": 1.00
+        }
+      }
+    }
   },
-
-  "volatility": {
-    "atr": 6.00,
-    "atrPeriod": 14,
-    "atrTimeframe": "DAILY",
-    "bufferMultiplier": 0.50
-  },
-  "confidence": {
-    "score": 0.84,
-    "level": "HIGH"
-}
-  "errors": [
+    ], 
+    "errors": [
     ...
   ],
 }
 ```
 
-## Implementation Details**
-Define that following StopLossConfig using Pydantic Settings.
+## Implementation Details
+
+Define the following StopLossConfig using Pydantic Settings.
+
 ```python
 class StopLossSettings(BaseSettings):
     # short horizon: 1-3 months
@@ -87,7 +184,7 @@ class StopLossSettings(BaseSettings):
     medium_atr_buffer: float = 0.75
 
     # medium horizon: 6-18 months
-    long_atr_period: int = 14
+    long_atr_period: int = 14     
     long_atr_buffer: float = 1.00
 ```
 Each Horizon indicates the planned approximate holding period for the given stock.
@@ -99,25 +196,45 @@ class InvestmentHorizon(str, Enum):
     MEDIUM = "MEDIUM"    # intended holding period: ~3-6 months
     LONG = "LONG"        # intended holding period: ~6-18 months
 ```
-Use following code as an approximate example of the swing low algorithm
+
+Below are starting configuration values. They are not claims that they're optimal.
+
+These starting value can be used until backtesting can be done.
+
+| Parameter | SHORT | MEDIUM | LONG |
+| --- | --- | --- | --- |
+| Holding horizon | 1–3 months | 3–6 months | 6–18 months |
+| Historical lookback | 6 months | 12 months | 36 months |
+| OHLCV timeframe | Daily | Daily | Weekly |
+| ATR period | 14 daily bars | 20 daily bars | 14 weekly bars |
+| ATR buffer multiplier | 0.50 | 0.75 | 1.00 |
+| Swing window | 2 | 2 | 2 |
+
+Before fetching the OHLCV historical data, decide the lookback period based on the longest horizon in the parameter list.  For Example
+
+- If request is for SHORT horizon,    fetch on 6 months of historical data.
+- If request is for SHORT and MEDIUM  horizon, fetch on 12 months of historical data.
+- If request is for MEDIUM horizon,   fetch on 12 months of historical data.
+- If request is for SHORT and LONG horizon,  fetch on 36 months of historical data.
+- If request is for LONG and MEDIUM horizon,  fetch on 36 months of historical data.
+
+
+Consider using following code as an approximate example of the swing low algorithm
 
 ```python
 from dataclasses import dataclass
 from datetime import date
-
 
 @dataclass(frozen=True)
 class PriceBar:
     date: date
     low: float
 
-
 @dataclass(frozen=True)
 class SwingLow:
     date: date
     price: float
     index: int
-
 
 def find_swing_lows(
     bars: list[PriceBar],
@@ -177,17 +294,14 @@ Recommendation is
   
 Use it for both daily and weekly bars, make the window configurable, and don't try to make the swing-low algorithm itself horizon-aware yet. Horizon awareness comes from which OHLCV timeframe/lookback you feed into it. Then let your later backtesting determine whether different window sizes improve the three horizons.
 
-
-Also avoid strict < comparisons for the surrounding lows.
-
 ## Usage
-section intentionlly left empty
+The stop loss SDK result will be used by another SDK to calcuate risk-reward.
+This service will also be used by various Agentic workflow as needed.
 
 ## Business Logic
 Business Logic Pipeline is as follows:
 
 ![StopLossPipeline](StopLossPipeline.png)
-
 
 ### The Approach
 The following approach will be used to calculate Stop Loss.
@@ -350,6 +464,9 @@ TR=(High-Low,|High-PreviousClose|,|Low-PreviousClose|)
 
 ATR is a smoothed average of True Range. Fidelity notes that ATR is commonly calculated over 14 periods and can use daily, weekly or monthly periods; it also suggests longer averaging periods when measuring longer-term volatility
 
+Consider using libraries like pandas-ta to calculate ATR if you think its helpful and can potentially be used for other calculations in the future.
+Let me know if you need me to install the pandas libary in the marketinsights virtual environment. If so provide installation command.
+
 ### Put the stop below support
 Now combine structural and volatility information.
 
@@ -380,10 +497,12 @@ $188 represents recent technical support. A $3 volatility allowance was placed b
 That explainability is valuable when an LLM eventually consumes this service.
 
 ## Validation Logic
-The only acceptable values for horizon is SHORT, MEDIUM, and LONG.
-The values are case insenstive. The following values are acceptable for horizon 
-SHORT, Short, short. Same for MEDIUM and LONG.
-The method accepting parameter will convert to upper case.
+
+The get_stop_loss() method can accept upto 10 symbols and multiple horizons.
+If more than 10 symbols are provided, raise 'BAD REQUEST' error.
+
+The only acceptable values for horizons is one of or combination of SHORT, MEDIUM, and LONG. The values are not required to be case sensitive. 
+The get_stop_loss() will convert the horizons to upper case to work with the internally defined ENUM.
 
 
 ## Exceptions
@@ -392,11 +511,12 @@ Have the Company SDK employ the Exception handling pattern for SDK services, tha
 
 ## Testing
 
-- Update test file “test_company_service.py” in the SDK Test directory. 
-- Include two tests. 
-  - One to handle get_historical_pricing() for IBM with lookback period of 1M.
-  - One to handle get_historical_pricing() for CSCO with from_date of 2026-08-30 and to_date of 2026-09-30.
-- Add a docstring on top of the file with the syntax for running the test either in gitbash or windows powershell.
+- Create test file “test_calculation_service.py” in the SDK Test directory. 
+- Include following tests:
+  - One to handle get_stop_loss() for AAPL and horizons SHORT
+  - One to handle get_stop_loss() for AAPL and horizons SHORT,MEDIUM
+  - One to handle get_stop_loss() for IBM and horizons SHORT,MEDIUM,LONG 
+- Add a docstring on top of the file with the both the gitbash and windows powershell syntax for running the test.
 
 
 
