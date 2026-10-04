@@ -1,6 +1,6 @@
 """Deterministic stop-loss tests (no credentials or live market data needed).
 
-Git Bash: 
+Git Bash:
 PowerShell: .\\.venv\\Scripts\\python.exe -m pytest tests/sdk/test_calculation_service.py
 """
 
@@ -113,12 +113,56 @@ async def test_requested_examples(
     for horizon, outcome in record["horizons"].items():
         stop, support, volatility = (outcome[key] for key in ("stopLoss", "support", "volatility"))
         assert stop["price"] == pytest.approx(
-            support["price"] - volatility["atr"] * volatility["bufferMultiplier"]
+            support["price"] - volatility["atr"] * volatility["bufferMultiplier"], abs=0.02
         )
-        assert stop["downsidePct"] == pytest.approx((130 - stop["price"]) / 130 * 100)
+        assert stop["downsidePct"] == pytest.approx((130 - stop["price"]) / 130 * 100, abs=0.01)
         assert volatility["atrTimeframe"] == ("WEEKLY" if horizon == "LONG" else "DAILY")
         assert volatility["atrPeriod"] == (20 if horizon == "MEDIUM" else 14)
         assert 0 <= support["strength"] <= 1
+
+
+async def test_response_rounding_preserves_calculation_precision(
+    company: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    current = 449.039876
+    atr = 21.527322414457025
+    buffer = 0.751234
+    company.get_summary.side_effect = None
+    company.get_summary.return_value = {"companies": [{"symbol": "AAPL", "price": current}]}
+    monkeypatch.setattr("mi_sdk.services.calculation_service.calculate_atr", lambda *_: atr)
+    monkeypatch.setattr(
+        "mi_sdk.services.calculation_service.select_support",
+        lambda *_: SimpleNamespace(price=300.02, strength=0.8258433684303244, touches=4),
+    )
+    sdk = CalculationService(
+        company,
+        StopLossSettings(medium_atr_buffer=buffer),
+        today=lambda: AS_OF,
+    )
+    result = await sdk.get_stop_loss(["AAPL"], ["MEDIUM"])
+    record = result["companies"][0]
+    outcome = record["horizons"]["MEDIUM"]
+    stop = 300.02 - atr * buffer
+    assert record["currentPrice"] == 449.04
+    assert outcome == {
+        "stopLoss": {
+            "price": round(stop, 2),
+            "downsidePct": round((current - stop) / current * 100, 2),
+            "method": "SUPPORT_ATR",
+        },
+        "support": {"price": 300.02, "strength": 0.826, "touches": 4},
+        "volatility": {
+            "atr": 21.53,
+            "atrPeriod": 20,
+            "atrTimeframe": "DAILY",
+            "bufferMultiplier": 0.75,
+        },
+    }
+    assert type(outcome["support"]["touches"]) is int
+    assert type(outcome["volatility"]["atrPeriod"]) is int
 
 
 async def test_horizon_independence_and_determinism(company: AsyncMock) -> None:

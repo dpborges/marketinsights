@@ -18,8 +18,8 @@
 - use dotenv to manage enviroment variables 
   - Example
     - MARKET_PROVIDER=fmp
-    - FMP_API_KEY=your_key_here
-    - ALPHAVANTAGE_API_KEY=your_key_here
+    - MARKET_FMP_API_KEY=your_key_here
+    - MARKET_ALPHAVANTAGE_API_KEY=your_key_here
     - REQUEST_TIMEOUT=30
 
 
@@ -40,14 +40,9 @@
 - Generate pytest tests for SDK services, and API routes
 - Mock provider adapters in API tests
 
-## Manual FMPAdapter testing
-- For manual testing for newly created adapter service, look for a directive in the prompt for the build of the specific FMP Adapter service itself. The fmp_adapter_run.py should be updated to able to test the service manually.
-
-
-
 ## SDK Project file Hierarchy
 
-![SDK Architecture](./images/SDK-file-hierarchy.png)
+![SDK Architecture](sdk-file-hierarchy.png)
 
 ..also available at src/mi_sdk folder in the project
 
@@ -70,7 +65,7 @@ That allows for switching providers without changing the application-facing API.
 ### SDK Architecture with Protocols
 SDK uses Protocols instead of ABCs for flexible, composition-based architecture
 
-![SDK Architecture](./images/sdk-architecture.png)
+![SDK Architecture](sdk-architecture.png)
 
 ## Key Principles
 

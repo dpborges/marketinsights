@@ -59,7 +59,8 @@ The starting parameters have not been backtested.
    and current price. Ties prefer the latest touch, then higher support price.
 8. `stopLoss.price = support.price - ATR * bufferMultiplier` and
    `downsidePct = (currentPrice-stopLoss.price)/currentPrice * 100`.
-   Preserve floating-point precision for downstream calculations.
+   Preserve floating-point precision during calculations. Round response floats
+   to two decimal places, except `support.strength`, which uses three.
 
 Horizon awareness comes from lookback, bar timeframe, ATR period, and buffer.
 Stops are not forced into a particular ordering across horizons.

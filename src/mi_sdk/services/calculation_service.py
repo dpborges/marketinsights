@@ -84,7 +84,8 @@ class CalculationService:
 
         Horizons are case-insensitive and deduplicated in request order. One
         history fetch per symbol covers the longest requested calendar lookback.
-        Output numbers retain precision for downstream risk/reward calculations.
+        Calculations retain full precision. Response floats are rounded to two
+        decimal places, except support strength, which uses three.
         """
         requested = normalize_symbols(symbols)
         if not isinstance(horizons, list) or not horizons:
@@ -155,8 +156,17 @@ class CalculationService:
                         bufferMultiplier=buffer,
                     ),
                 )
-            return CompanyStopLoss(
+            result = CompanyStopLoss(
                 symbol=symbol, currentPrice=current, horizons=results
             ).model_dump(mode="json")
+            result["currentPrice"] = round(result["currentPrice"], 2)
+            for outcome in result["horizons"].values():
+                for section_name in ("stopLoss", "support", "volatility"):
+                    section = outcome[section_name]
+                    for key, value in section.items():
+                        if isinstance(value, float):
+                            digits = 3 if section_name == "support" and key == "strength" else 2
+                            section[key] = round(value, digits)
+            return result
 
         return await collect_batch(requested, calculate, "companies")

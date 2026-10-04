@@ -1,3 +1,56 @@
+# Calculation API testing
+
+Run the mocked Calculation API harness from the repository root in PowerShell:
+
+```powershell
+.venv/Scripts/python.exe -m pytest tests/api/test_calculation.py --no-cov -v
+```
+
+The tests need no provider credentials, network, PostgreSQL, or Redis. They cover
+the sample requests, default and case-insensitive horizons, symbol normalization,
+deduplication, the ten-unique-symbol boundary, validation before service
+construction, exact SDK response preservation, partial/all item failures,
+SDK exception mapping, response validation, dependency wiring, and OpenAPI.
+
+For manual testing, configure `MARKET_FMP_API_KEY` in the environment or `.env`
+and start the application:
+
+```powershell
+.venv/Scripts/python.exe -m uvicorn mi_api.main:app --app-dir src --reload
+```
+
+Open http://localhost:8000/docs and expand **calculation**, or run:
+
+```powershell
+curl.exe "http://localhost:8000/api/v1/calculation/stop-loss?symbols=META&horizons=SHORT,MEDIUM"
+curl.exe "http://localhost:8000/api/v1/calculation/stop-loss?symbols=IBM&horizons=short,medium"
+curl.exe "http://localhost:8000/api/v1/calculation/stop-loss?symbols=AAPL&horizons=short"
+curl.exe "http://localhost:8000/api/v1/calculation/stop-loss?symbols=,META,APPL&horizons=SHORT,medium,LONG"
+curl.exe "http://localhost:8000/api/v1/calculation/stop-loss?symbols=AAPL"
+```
+
+Symbols are trimmed, uppercased, and deduplicated in request order; empty symbol
+entries are ignored. Missing symbols or an empty resulting list return HTTP 400
+with `No symbols provided`. More than ten unique symbols return HTTP 400 with
+`10 symbol request limit exceeded`. Embedded whitespace in a symbol is rejected.
+`APPL` in the sample is passed through as written; use `AAPL` for Apple.
+
+Omitted horizons default to `SHORT`. Provided horizons are trimmed, uppercased,
+and deduplicated in request order. An empty horizons list returns HTTP 400 with
+`No horizons provided`. Values other than `SHORT`, `MEDIUM`, and `LONG`, including
+empty entries mixed with valid horizons, return HTTP 400 with
+`Invalid horizon value provided`.
+
+Successful requests return the SDK's `companies`, `errors`, and `summary`, with
+each company's `currentPrice` and calculations under its `horizons` dictionary.
+Each horizon includes `stopLoss`, `support`, and `volatility`. The SDK rounds
+response floats to two decimal places, except `support.strength`, which uses
+three. Calculations retain full precision internally. Partial and all item
+failures remain HTTP 200. Operation-wide
+failures use the centralized SDK exception handler, including HTTP 503 for
+unavailability and HTTP 504 for timeouts. Responses are validated against the
+SDK domain models.
+
 # Analyst API testing
 
 Run from the repository root in PowerShell:
