@@ -117,13 +117,10 @@ The <coordinator-method-name>()  will call the following methods in parallel
 - <calling-method-name3>
 with the same parameter in parallel.
 
-# Usage
-section intentionlly left empty
-
 ## Business Logic
 section intentionlly left empty
 
-## Validation Logic
+## SDK Validation Logic
 
 The SDK <method-name1>() will accept <number> parameters
 - <parameter-name>: <parameter-description>; Sample values are: <sample-value(s)>
@@ -149,7 +146,7 @@ Ignore empty entries, so it works, for example symbols=,META,APPL works.
 Have the <sdk-service-name> SDK employ the Exception handling pattern for SDK services, that is documented in file 
 ```code .github/prompts/exception_management/exception_management.md.```
 
-## Testing
+## SDK Testing
 
 - Create a separate test file “test_<sdk-service-name>_service.py” in the SDK Test directory. 
 - Include <number> tests. 
@@ -159,11 +156,9 @@ Have the <sdk-service-name> SDK employ the Exception handling pattern for SDK se
 - Add a docstring on top of the file with the syntax for running the test from gitbash terminal.
 
 
-## Documentation
+## SDK Documentation
 
 Update the following  file /docs/mi_api/testing-documentation.md with instructions on how to run the test harness for the <sdk-service-name> API. 
-
-Add the new api to the docs url http://localhost:8000/docs.
 
 If the <sdk-service-name> service is complicated and has extensive business logic and validation rules, create a document in the docs/sdk/<sdk-service-name>-service file capturing overarching goal and salient points the reader should understand if they plan to make modifications and adjustments to the business logic and/or implementation in the future.
 

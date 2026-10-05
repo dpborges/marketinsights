@@ -35,7 +35,7 @@ and can be found in the SDK directory:   src/mi_sdk/services
 The API returns the JSON object from the respective <sdk-method-name>() method "as-is".
 The API should understand how to map exceptions from the SDK to the HTTP response using guidance in the Exceptions section of this prompt.
 
-### Sample URL GET Requests
+### API Sample URL GET Requests
 
 - Endpoint1: /api/v1/<resource-name>/<sub-resource-name>?<sample-query-string1>
 - Endpoint2: /api/v1/<resource-name>/<sub-resource-name>?<sample-query-string2>
@@ -47,7 +47,7 @@ it invokes the <sdk-method-name> method on the <sdk-service-name>_service.py SDK
 Have the Calculation API employ the Exception handling pattern for API's, that is documented in file 
 ```code .github/prompts/exception_management/exception_management.md.```
 
-### Validations and Defaults
+### API Validations and Defaults
 
 The API will accept <number> parameters
 - <parameter-name>: <parameter-description>; Sample values are: <sample-value(s)>
@@ -66,15 +66,16 @@ The API will accept <number> parameters
 
 **Invalid parameter value(s)**
 - If <parameter-name> does not contain one of the following acceptable parameter values: <comma-delimeted-list-of-valid-parameters> return HTTPS status 400 with message "Invalid <parameter-name> value provided"
-
   
-## Testing
+## API Testing
 
 Document the endpoints with a brief description on top of the src/mi_api/routers/<api-name>.py file.
 
 Create test harness in the tests/api folder
 
-Update the following  file /docs/mi_api/testing-documentation.md with instructions on how to run the test harness for the <api-name> API. 
+## API Documentation
+
+Update the following file /docs/mi_api/testing-documentation.md with instructions on how to run the test harness for the <api-name> API. 
 
 Add the new api to the docs url http://localhost:8000/docs.
 
