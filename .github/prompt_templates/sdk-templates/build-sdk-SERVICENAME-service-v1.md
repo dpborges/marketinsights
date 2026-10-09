@@ -4,7 +4,7 @@ Build <sdk-service-name> SDK service
 
 Before moving forward stop here and read the **pre-execution review** document located in this file: 
 ```code
-.github/prompts/_prompt_templates/pre-execution-reviews/pre-execution-basic-review.md 
+.github/prompts/prompt_templates/pre-execution-reviews/pre-execution-basic-review.md 
 ```
 and then we can proceed with the prompt below as directed. 
 
@@ -98,7 +98,7 @@ If there is no properties provided, default to 2 decimal places.
 
 ## use AsyncPipeline for <calling-method-name>() method
 Since the <method-name>() method in the fmp_<domain-name>.py provider only supports a single  parameter, I would like this SDK to implement an AsyncPipeLine to be able to handle running  
-several instances of the <method-name1>() with different parameters using Python AsyncPipeline. An example usage is documented here: .gitlub/prompts/_prompt_templates/implementation-templates.
+several instances of the <method-name1>() with different parameters using Python AsyncPipeline. An example usage is documented here: .gitlub/prompts/prompt_templates/implementation-templates.
 
 The idea is for the SDK to have the ability to accept a parameter list (not just one) and call the respective fmp_<domain-name> adapter method for each parameter in parallel. Wait until all method calls are completed for each parameter, and get the overall response for each parameter, and return all responses at once. 
 

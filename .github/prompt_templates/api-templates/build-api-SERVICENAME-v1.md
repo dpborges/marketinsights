@@ -4,7 +4,7 @@ Build <api-name> API
 
 Before moving forward stop here and read the **pre-execution review** document located in this file: 
 ```code
-.github/prompts/_prompt_templates/pre-execution-reviews/pre-execution-basic-review.md 
+.github/prompts/prompt_templates/pre-execution-reviews/pre-execution-basic-review.md 
 ```
 and then we can proceed with the prompt below as directed. 
 
@@ -14,7 +14,6 @@ You are a Python FASTAPI developer. Create a <api-name> API in a separate router
 
 **Context:**
 - FastAPI standards:  .github/copilot-instructions.md
-- Architecture:       .github/copilot-instructions.md
 - SDK Design:         .github/copilot-instructions.md
 - SDK Architecture:   docs/sdk/architecture.md
 - SDK Directory:	    src/mi_sdk
@@ -22,7 +21,8 @@ You are a Python FASTAPI developer. Create a <api-name> API in a separate router
 - SDK Service:        src/mi_sdk/services/<sdk-service-name>_service.py
 - Exception Handling: .github/prompts/exception_management/exception_management.md
 
-### Implementation guidelines
+### Implementation instructions
+
 The <api-name> API should expose the following SDK method(s):
   - <sdk-method-name-being-exposed>
   

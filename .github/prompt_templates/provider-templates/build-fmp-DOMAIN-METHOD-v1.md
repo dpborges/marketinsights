@@ -4,7 +4,7 @@
 
 Before moving forward stop here and read the **pre-execution review** document located in this file: 
 ```code
-.github/prompts/_prompt_templates/pre-execution-reviews/pre-execution-basic-review.md 
+.github/prompts/prompt_templates/pre-execution-reviews/pre-execution-basic-review.md 
 ```
 and then we can proceed with the prompt below as directed. 
 
